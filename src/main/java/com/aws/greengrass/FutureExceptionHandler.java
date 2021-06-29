@@ -8,6 +8,7 @@ package com.aws.greengrass;
 import com.aws.greengrass.logging.api.Logger;
 import com.aws.greengrass.logging.impl.LogManager;
 import com.aws.greengrass.provisioning.exceptions.RetryableProvisioningException;
+import software.amazon.awssdk.crt.mqtt.MqttException;
 
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -73,9 +74,15 @@ public final class FutureExceptionHandler {
         }
     }
 
+    @SuppressWarnings("PMD.CollapsibleIfStatements")
     private static void unwrapExecutionException(ExecutionException e)
             throws TimeoutException, InterruptedException, ExecutionException {
         Throwable cause = e.getCause();
+        if (cause instanceof MqttException) {
+            if (cause.getMessage() != null && cause.getMessage().contains("operation timed out")) {
+                throw new TimeoutException(cause.getMessage());
+            }
+        }
         if (cause instanceof TimeoutException) {
             throw (TimeoutException) cause;
         }

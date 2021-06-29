@@ -5,6 +5,7 @@
 
 package com.aws.greengrass;
 
+import com.aws.greengrass.MqttConnectionHelper.MqttConnectionParameters.MqttConnectionParametersBuilder;
 import com.aws.greengrass.logging.api.Logger;
 import com.aws.greengrass.logging.impl.LogManager;
 import com.aws.greengrass.provisioning.DeviceIdentityInterface;
@@ -39,10 +40,10 @@ import java.util.concurrent.Future;
 import static com.aws.greengrass.provisioning.ProvisionConfiguration.NucleusConfiguration;
 import static com.aws.greengrass.provisioning.ProvisionConfiguration.SystemConfiguration;
 
-public class AwsFleetProvisioningPlugin implements DeviceIdentityInterface {
+public class AwsIotFleetProvisioningPlugin implements DeviceIdentityInterface {
 
-    static final String PLUGIN_NAME = "aws.greengrass.AwsFleetProvisioningPlugin";
-    private static final Logger logger = LogManager.getLogger(AwsFleetProvisioningPlugin.class);
+    static final String PLUGIN_NAME = "aws.greengrass.AwsIotFleetProvisioningPlugin";
+    private static final Logger logger = LogManager.getLogger(AwsIotFleetProvisioningPlugin.class);
 
     // Required parameters
     static final String PROVISIONING_TEMPLATE_PARAMETER_NAME = "provisioningTemplate";
@@ -51,6 +52,7 @@ public class AwsFleetProvisioningPlugin implements DeviceIdentityInterface {
     static final String ROOT_CA_PATH_PARAMETER_NAME = "rootCaPath";
     static final String IOT_DATA_ENDPOINT_PARAMETER_NAME = "iotDataEndpoint";
     static final String ROOT_PATH_PARAMETER_NAME = "rootPath";
+    static final String MQTT_PORT_PARAMETER_NAME = "mqttPort";
 
     // Optional Paramters
     static final String DEVICE_ID_PARAMETER_NAME = "deviceId";
@@ -71,13 +73,13 @@ public class AwsFleetProvisioningPlugin implements DeviceIdentityInterface {
     private final IotIdentityHelperFactory iotIdentityHelperFactory;
     private final MqttConnectionHelper mqttConnectionHelper;
 
-    public AwsFleetProvisioningPlugin() {
+    public AwsIotFleetProvisioningPlugin() {
         iotIdentityHelperFactory = new IotIdentityHelperFactory();
         mqttConnectionHelper = new MqttConnectionHelper();
     }
 
-    AwsFleetProvisioningPlugin(IotIdentityHelperFactory iotIdentityHelperFactory,
-                                         MqttConnectionHelper mqttConnectionHelper) {
+    AwsIotFleetProvisioningPlugin(IotIdentityHelperFactory iotIdentityHelperFactory,
+                                  MqttConnectionHelper mqttConnectionHelper) {
         this.iotIdentityHelperFactory = iotIdentityHelperFactory;
         this.mqttConnectionHelper = mqttConnectionHelper;
     }
@@ -97,6 +99,10 @@ public class AwsFleetProvisioningPlugin implements DeviceIdentityInterface {
         String certPath = parameterMap.get(CLAIM_CERTIFICATE_PATH_PARAMETER_NAME).toString();
         String keyPath = parameterMap.get(CLAIM_CERTIFICATE_PRIVATE_KEY_PATH_PARAMETER_NAME).toString();
         String endpoint = parameterMap.get(IOT_DATA_ENDPOINT_PARAMETER_NAME).toString();
+        Integer mqttPort = null;
+        if (parameterMap.get(MQTT_PORT_PARAMETER_NAME) != null) {
+            mqttPort = Integer.valueOf(parameterMap.get(MQTT_PORT_PARAMETER_NAME).toString());
+        }
         String rootCaPath = parameterMap.get(ROOT_CA_PATH_PARAMETER_NAME).toString();
         String templateName = parameterMap.get(PROVISIONING_TEMPLATE_PARAMETER_NAME).toString();
         String clientId = parameterMap.get(DEVICE_ID_PARAMETER_NAME) == null ? UUID.randomUUID().toString()
@@ -112,12 +118,22 @@ public class AwsFleetProvisioningPlugin implements DeviceIdentityInterface {
         Map<String, Object> templateParameters =
                 (Map<String, Object>) parameterMap.get(TEMPLATE_PARAMETERS_PARAMETER_NAME);
 
+        MqttConnectionParametersBuilder mqttParameterBuilder =
+                MqttConnectionHelper.MqttConnectionParameters.builder()
+                        .certPath(certPath)
+                        .keyPath(keyPath)
+                        .rootCaPath(rootCaPath)
+                        .endpoint(endpoint)
+                        .clientId(clientId)
+                        .httpProxyOptions(httpProxyOptions)
+                        .mqttPort(mqttPort);
+
+
         try (EventLoopGroup eventLoopGroup = new EventLoopGroup(1);
              HostResolver resolver = new HostResolver(eventLoopGroup);
              ClientBootstrap clientBootstrap = new ClientBootstrap(eventLoopGroup, resolver);
              MqttClientConnection connection = mqttConnectionHelper
-                .getMqttConnection(certPath, keyPath, rootCaPath, endpoint, clientId, clientBootstrap,
-                        httpProxyOptions)) {
+                .getMqttConnection(mqttParameterBuilder.clientBootstrap(clientBootstrap).build())) {
 
             CompletableFuture<Boolean> connected = connection.connect();
             FutureExceptionHandler.getFutureAfterCompletion(connected,
@@ -141,7 +157,7 @@ public class AwsFleetProvisioningPlugin implements DeviceIdentityInterface {
                     .getFutureAfterCompletion(registerFuture, "Caught exception during registering Iot Thing");
             CompletableFuture<Void> disconnected = connection.disconnect();
             FutureExceptionHandler.getFutureAfterCompletion(disconnected,
-                    "Caught timeout exception while disconnecting");
+                    "Caught exception while disconnecting");
 
             return createProvisioningConfiguration(parameterMap, registerThingResponse);
         } catch (CrtRuntimeException | InterruptedException ex) {
@@ -204,6 +220,7 @@ public class AwsFleetProvisioningPlugin implements DeviceIdentityInterface {
     private void checkRequiredParameterPresent(Map<String, Object> parameterMap, List<String> errors,
                                                String parameterName) {
         if (!parameterMap.containsKey(parameterName)
+                || parameterMap.get(parameterName) == null
                 || Utils.isEmpty(parameterMap.get(parameterName).toString())) {
             errors.add(String.format(MISSING_REQUIRED_PARAMETERS_ERROR_FORMAT,
                     parameterName));

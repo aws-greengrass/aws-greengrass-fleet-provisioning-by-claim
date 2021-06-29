@@ -5,6 +5,7 @@
 
 package com.aws.greengrass;
 
+import com.aws.greengrass.MqttConnectionHelper.MqttConnectionParameters;
 import com.aws.greengrass.provisioning.ProvisionConfiguration;
 import com.aws.greengrass.provisioning.ProvisionContext;
 import com.aws.greengrass.provisioning.exceptions.RetryableProvisioningException;
@@ -32,21 +33,21 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 
-import static com.aws.greengrass.AwsFleetProvisioningPlugin.AWS_REGION_PARAMETER_NAME;
-import static com.aws.greengrass.AwsFleetProvisioningPlugin.CLAIM_CERTIFICATE_PATH_PARAMETER_NAME;
-import static com.aws.greengrass.AwsFleetProvisioningPlugin.CLAIM_CERTIFICATE_PRIVATE_KEY_PATH_PARAMETER_NAME;
-import static com.aws.greengrass.AwsFleetProvisioningPlugin.DEVICE_CERTIFICATE_PATH_RELATIVE_TO_ROOT;
-import static com.aws.greengrass.AwsFleetProvisioningPlugin.DEVICE_ID_PARAMETER_NAME;
-import static com.aws.greengrass.AwsFleetProvisioningPlugin.IOT_CREDENTIAL_ENDPOINT_PARAMETER_NAME;
-import static com.aws.greengrass.AwsFleetProvisioningPlugin.IOT_DATA_ENDPOINT_PARAMETER_NAME;
-import static com.aws.greengrass.AwsFleetProvisioningPlugin.IOT_ROLE_ALIAS_PARAMETER_NAME;
-import static com.aws.greengrass.AwsFleetProvisioningPlugin.MISSING_REQUIRED_PARAMETERS_ERROR_FORMAT;
-import static com.aws.greengrass.AwsFleetProvisioningPlugin.PRIVATE_KEY_PATH_RELATIVE_TO_ROOT;
-import static com.aws.greengrass.AwsFleetProvisioningPlugin.PROVISIONING_TEMPLATE_PARAMETER_NAME;
-import static com.aws.greengrass.AwsFleetProvisioningPlugin.PROXY_URL_PARAMETER_NAME;
-import static com.aws.greengrass.AwsFleetProvisioningPlugin.ROOT_CA_PATH_PARAMETER_NAME;
-import static com.aws.greengrass.AwsFleetProvisioningPlugin.ROOT_PATH_PARAMETER_NAME;
-import static com.aws.greengrass.AwsFleetProvisioningPlugin.TEMPLATE_PARAMETERS_PARAMETER_NAME;
+import static com.aws.greengrass.AwsIotFleetProvisioningPlugin.AWS_REGION_PARAMETER_NAME;
+import static com.aws.greengrass.AwsIotFleetProvisioningPlugin.CLAIM_CERTIFICATE_PATH_PARAMETER_NAME;
+import static com.aws.greengrass.AwsIotFleetProvisioningPlugin.CLAIM_CERTIFICATE_PRIVATE_KEY_PATH_PARAMETER_NAME;
+import static com.aws.greengrass.AwsIotFleetProvisioningPlugin.DEVICE_CERTIFICATE_PATH_RELATIVE_TO_ROOT;
+import static com.aws.greengrass.AwsIotFleetProvisioningPlugin.DEVICE_ID_PARAMETER_NAME;
+import static com.aws.greengrass.AwsIotFleetProvisioningPlugin.IOT_CREDENTIAL_ENDPOINT_PARAMETER_NAME;
+import static com.aws.greengrass.AwsIotFleetProvisioningPlugin.IOT_DATA_ENDPOINT_PARAMETER_NAME;
+import static com.aws.greengrass.AwsIotFleetProvisioningPlugin.IOT_ROLE_ALIAS_PARAMETER_NAME;
+import static com.aws.greengrass.AwsIotFleetProvisioningPlugin.MISSING_REQUIRED_PARAMETERS_ERROR_FORMAT;
+import static com.aws.greengrass.AwsIotFleetProvisioningPlugin.PRIVATE_KEY_PATH_RELATIVE_TO_ROOT;
+import static com.aws.greengrass.AwsIotFleetProvisioningPlugin.PROVISIONING_TEMPLATE_PARAMETER_NAME;
+import static com.aws.greengrass.AwsIotFleetProvisioningPlugin.PROXY_URL_PARAMETER_NAME;
+import static com.aws.greengrass.AwsIotFleetProvisioningPlugin.ROOT_CA_PATH_PARAMETER_NAME;
+import static com.aws.greengrass.AwsIotFleetProvisioningPlugin.ROOT_PATH_PARAMETER_NAME;
+import static com.aws.greengrass.AwsIotFleetProvisioningPlugin.TEMPLATE_PARAMETERS_PARAMETER_NAME;
 import static com.aws.greengrass.testcommons.testutilities.ExceptionLogProtector.ignoreExceptionOfType;
 import static com.aws.greengrass.testcommons.testutilities.ExceptionLogProtector.ignoreExceptionUltimateCauseOfType;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -61,7 +62,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith({MockitoExtension.class, GGExtension.class})
-public class AwsFleetProvisioningPluginTest {
+public class AwsIotFleetProvisioningPluginTest {
 
     private static final String MOCK_PROV_TEMPLATE_NAME = "MOCK_PROV_TEMPLATE_NAME";
     private static final String DEFAULT_PROVISIONING_POLICY = "PROVISION_IF_NOT_PROVISIONED";
@@ -81,7 +82,7 @@ public class AwsFleetProvisioningPluginTest {
     Path privateKeyPath;
     Path rootCAPath;
 
-    private AwsFleetProvisioningPlugin awsFleetProvisioningPlugin;
+    private AwsIotFleetProvisioningPlugin awsIotFleetProvisioningPlugin;
 
     @Mock
     private IotIdentityHelperFactory iotIdentityHelperFactory;
@@ -104,11 +105,9 @@ public class AwsFleetProvisioningPluginTest {
         Files.createFile(rootCAPath);
 
         ignoreExceptionUltimateCauseOfType(context, MqttException.class);
-        awsFleetProvisioningPlugin = new AwsFleetProvisioningPlugin(iotIdentityHelperFactory, mqttConnectionHelper);
+        awsIotFleetProvisioningPlugin = new AwsIotFleetProvisioningPlugin(iotIdentityHelperFactory, mqttConnectionHelper);
         lenient().when(iotIdentityHelperFactory.getInstance(any())).thenReturn(mockIotIdentityHelper);
-        lenient().when(mqttConnectionHelper.getMqttConnection(eq(claimCertificatePath.toString()),
-                eq(privateKeyPath.toString()), eq(rootCAPath.toString()), eq(MOCK_IOT_DATA_ENDPOINT), any(), any(),
-                any()))
+        lenient().when(mqttConnectionHelper.getMqttConnection(any()))
                 .thenReturn(mockConnection);
         lenient().when(mockConnection.connect()).thenReturn(CompletableFuture.completedFuture(true));
         lenient().when(mockConnection.disconnect()).thenReturn(CompletableFuture.completedFuture(null));
@@ -119,7 +118,7 @@ public class AwsFleetProvisioningPluginTest {
         Map<String, Object> parameterMap = new HashMap<>();
         // empty map
         Exception e = assertThrows(RuntimeException.class,
-                () -> awsFleetProvisioningPlugin.updateIdentityConfiguration(new ProvisionContext(DEFAULT_PROVISIONING_POLICY, parameterMap)));
+                () -> awsIotFleetProvisioningPlugin.updateIdentityConfiguration(new ProvisionContext(DEFAULT_PROVISIONING_POLICY, parameterMap)));
         String errorMessage = e.getMessage();
         assertTrue(errorMessage.contains(String.format(MISSING_REQUIRED_PARAMETERS_ERROR_FORMAT,
                 PROVISIONING_TEMPLATE_PARAMETER_NAME)));
@@ -156,7 +155,7 @@ public class AwsFleetProvisioningPluginTest {
                 any())).thenReturn(createMockRegisterThingResponse());
 
         ProvisionConfiguration provisionConfiguration =
-                awsFleetProvisioningPlugin.updateIdentityConfiguration(provisionContext);
+                awsIotFleetProvisioningPlugin.updateIdentityConfiguration(provisionContext);
 
         verify(mockIotIdentityHelper).createKeysAndCertificate();
         verify(mockIotIdentityHelper).registerThing(eq(MOCK_CERTIFICATE_OWNERSHIP_TOKEN),
@@ -193,10 +192,10 @@ public class AwsFleetProvisioningPluginTest {
                 any())).thenReturn(createMockRegisterThingResponse());
 
         ProvisionConfiguration provisionConfiguration =
-                awsFleetProvisioningPlugin.updateIdentityConfiguration(provisionContext);
-        ArgumentCaptor<HttpProxyOptions> proxyCaptor = ArgumentCaptor.forClass(HttpProxyOptions.class);
-        verify(mqttConnectionHelper).getMqttConnection(any(), any(), any(), any(), eq(MOCK_DEVICE_ID), any(),
-                proxyCaptor.capture());
+                awsIotFleetProvisioningPlugin.updateIdentityConfiguration(provisionContext);
+        ArgumentCaptor<MqttConnectionParameters> mqttParameterCaptor =
+                ArgumentCaptor.forClass(MqttConnectionParameters.class);
+        verify(mqttConnectionHelper).getMqttConnection(mqttParameterCaptor.capture());
         verify(mockIotIdentityHelper).createKeysAndCertificate();
 
         ArgumentCaptor<HashMap> templateParameterCaptor = ArgumentCaptor.forClass(HashMap.class);
@@ -209,7 +208,7 @@ public class AwsFleetProvisioningPluginTest {
         assertEquals(MOCK_IOT_CREDENTIAL_ENDPOINT, nucleusConfiguration.getIotCredentialsEndpoint());
         assertEquals("us-west-2", nucleusConfiguration.getAwsRegion());
         assertEquals(MOCK_ROLE_ALIAS, nucleusConfiguration.getIotRoleAlias());
-        HttpProxyOptions httpProxyOptions = proxyCaptor.getValue();
+        HttpProxyOptions httpProxyOptions = mqttParameterCaptor.getValue().getHttpProxyOptions();
         assertEquals("host", httpProxyOptions.getHost());
         assertEquals(9999, httpProxyOptions.getPort());
         assertEquals("testuser", httpProxyOptions.getAuthorizationUsername());
@@ -226,7 +225,7 @@ public class AwsFleetProvisioningPluginTest {
         ProvisionContext provisionContext = new ProvisionContext(DEFAULT_PROVISIONING_POLICY, parameterMap);
 
         assertThrows(RuntimeException.class,
-               () -> awsFleetProvisioningPlugin.updateIdentityConfiguration(provisionContext));
+               () -> awsIotFleetProvisioningPlugin.updateIdentityConfiguration(provisionContext));
         verify(mockIotIdentityHelper, times(0)).createKeysAndCertificate();
         verify(mockIotIdentityHelper, times(0)).registerThing(eq(MOCK_CERTIFICATE_OWNERSHIP_TOKEN),
                 eq(MOCK_PROV_TEMPLATE_NAME), any());
@@ -240,7 +239,7 @@ public class AwsFleetProvisioningPluginTest {
         when(mockIotIdentityHelper.createKeysAndCertificate())
                 .thenThrow(new RetryableProvisioningException("timeout"));
         assertThrows(RetryableProvisioningException.class,
-                () -> awsFleetProvisioningPlugin.updateIdentityConfiguration(provisionContext));
+                () -> awsIotFleetProvisioningPlugin.updateIdentityConfiguration(provisionContext));
         verify(mockIotIdentityHelper).createKeysAndCertificate();
         verify(mockIotIdentityHelper, times(0)).registerThing(eq(MOCK_CERTIFICATE_OWNERSHIP_TOKEN),
                 eq(MOCK_PROV_TEMPLATE_NAME), any());
@@ -256,7 +255,7 @@ public class AwsFleetProvisioningPluginTest {
         when(mockIotIdentityHelper.registerThing(any(), any(), any()))
                 .thenThrow(new InterruptedException("interrupted"));
         assertThrows(InterruptedException.class,
-                () -> awsFleetProvisioningPlugin.updateIdentityConfiguration(provisionContext));
+                () -> awsIotFleetProvisioningPlugin.updateIdentityConfiguration(provisionContext));
         verify(mockIotIdentityHelper).createKeysAndCertificate();
         verify(mockIotIdentityHelper).registerThing(eq(MOCK_CERTIFICATE_OWNERSHIP_TOKEN),
                 eq(MOCK_PROV_TEMPLATE_NAME), any());
