@@ -9,6 +9,8 @@ import com.aws.greengrass.logging.api.Logger;
 import com.aws.greengrass.logging.impl.LogManager;
 import com.aws.greengrass.util.ProxyUtils;
 import com.aws.greengrass.util.Utils;
+import lombok.Builder;
+import lombok.Getter;
 import software.amazon.awssdk.crt.CRT;
 import software.amazon.awssdk.crt.http.HttpProxyOptions;
 import software.amazon.awssdk.crt.io.ClientBootstrap;
@@ -40,27 +42,25 @@ public class MqttConnectionHelper {
 
     /**
      * Create mqtt connection using the given certificates, and endpoint.
-     * @param certPath Path of the x509 certificate to authenticate with AWS IoT
-     * @param keyPath Path of the private key for the certificate
-     * @param rootCaPath Path of the root CA
-     * @param endpoint AWS IoT data endpoint for the account
-     * @param clientId Client Id for this connection
-     * @param clientBootstrap {@link ClientBootstrap}
-     * @param httpProxyOptions {@link HttpProxyOptions}
+     * @param mqttConnectionParameters {@link MqttConnectionParameters}
      * @return {@link MqttClientConnection}
      */
-    public MqttClientConnection getMqttConnection(String certPath, String keyPath, String rootCaPath, String endpoint,
-             String clientId, ClientBootstrap clientBootstrap, HttpProxyOptions httpProxyOptions) {
-        AwsIotMqttConnectionBuilder builder = AwsIotMqttConnectionBuilder.newMtlsBuilderFromPath(certPath, keyPath)
-                .withCertificateAuthorityFromPath(null, rootCaPath)
-                .withEndpoint(endpoint)
-                .withClientId(clientId)
+    public MqttClientConnection getMqttConnection(MqttConnectionParameters mqttConnectionParameters) {
+        AwsIotMqttConnectionBuilder builder =
+                AwsIotMqttConnectionBuilder.newMtlsBuilderFromPath(mqttConnectionParameters.getCertPath(),
+                        mqttConnectionParameters.getKeyPath())
+                .withCertificateAuthorityFromPath(null, mqttConnectionParameters.getRootCaPath())
+                .withEndpoint(mqttConnectionParameters.getEndpoint())
+                .withClientId(mqttConnectionParameters.getClientId())
                 .withCleanSession(true)
-                .withBootstrap(clientBootstrap)
+                .withBootstrap(mqttConnectionParameters.getClientBootstrap())
                 .withConnectionEventCallbacks(callbacks);
 
-        if (httpProxyOptions != null) {
-            builder.withHttpProxyOptions(httpProxyOptions);
+        if (mqttConnectionParameters.getMqttPort() != null) {
+            builder.withPort(mqttConnectionParameters.getMqttPort().shortValue());
+        }
+        if (mqttConnectionParameters.getHttpProxyOptions() != null) {
+            builder.withHttpProxyOptions(mqttConnectionParameters.getHttpProxyOptions());
         }
         return builder.build();
     }
@@ -91,5 +91,18 @@ public class MqttConnectionHelper {
         }
 
         return httpProxyOptions;
+    }
+
+    @Builder
+    @Getter
+    public static class MqttConnectionParameters {
+        private String certPath;
+        private String keyPath;
+        private String rootCaPath;
+        private String endpoint;
+        private String clientId;
+        private Integer mqttPort;
+        private ClientBootstrap clientBootstrap;
+        private HttpProxyOptions httpProxyOptions;
     }
 }
