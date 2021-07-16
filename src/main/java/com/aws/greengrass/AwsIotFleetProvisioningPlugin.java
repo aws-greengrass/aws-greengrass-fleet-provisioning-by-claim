@@ -42,7 +42,7 @@ import static com.aws.greengrass.provisioning.ProvisionConfiguration.SystemConfi
 
 public class AwsIotFleetProvisioningPlugin implements DeviceIdentityInterface {
 
-    static final String PLUGIN_NAME = "aws.greengrass.AwsIotFleetProvisioningPlugin";
+    static final String PLUGIN_NAME = "aws.greengrass.FleetProvisioning";
     private static final Logger logger = LogManager.getLogger(AwsIotFleetProvisioningPlugin.class);
 
     // Required parameters
