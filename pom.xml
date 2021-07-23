@@ -25,7 +25,7 @@
     <properties>
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
-        <fleetprovisioningpluginjar.name>FleetProvisioning</fleetprovisioningpluginjar.name>
+        <fleetprovisioningpluginjar.name>FleetProvisioningByClaim</fleetprovisioningpluginjar.name>
     </properties>
 
     <build>

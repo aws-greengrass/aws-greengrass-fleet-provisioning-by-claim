@@ -40,10 +40,10 @@ import java.util.concurrent.Future;
 import static com.aws.greengrass.provisioning.ProvisionConfiguration.NucleusConfiguration;
 import static com.aws.greengrass.provisioning.ProvisionConfiguration.SystemConfiguration;
 
-public class AwsIotFleetProvisioningPlugin implements DeviceIdentityInterface {
+public class FleetProvisioningByClaimPlugin implements DeviceIdentityInterface {
 
-    static final String PLUGIN_NAME = "aws.greengrass.FleetProvisioning";
-    private static final Logger logger = LogManager.getLogger(AwsIotFleetProvisioningPlugin.class);
+    static final String PLUGIN_NAME = "aws.greengrass.FleetProvisioningByClaim";
+    private static final Logger logger = LogManager.getLogger(FleetProvisioningByClaimPlugin.class);
 
     // Required parameters
     static final String PROVISIONING_TEMPLATE_PARAMETER_NAME = "provisioningTemplate";
@@ -73,13 +73,13 @@ public class AwsIotFleetProvisioningPlugin implements DeviceIdentityInterface {
     private final IotIdentityHelperFactory iotIdentityHelperFactory;
     private final MqttConnectionHelper mqttConnectionHelper;
 
-    public AwsIotFleetProvisioningPlugin() {
+    public FleetProvisioningByClaimPlugin() {
         iotIdentityHelperFactory = new IotIdentityHelperFactory();
         mqttConnectionHelper = new MqttConnectionHelper();
     }
 
-    AwsIotFleetProvisioningPlugin(IotIdentityHelperFactory iotIdentityHelperFactory,
-                                  MqttConnectionHelper mqttConnectionHelper) {
+    FleetProvisioningByClaimPlugin(IotIdentityHelperFactory iotIdentityHelperFactory,
+                                   MqttConnectionHelper mqttConnectionHelper) {
         this.iotIdentityHelperFactory = iotIdentityHelperFactory;
         this.mqttConnectionHelper = mqttConnectionHelper;
     }
