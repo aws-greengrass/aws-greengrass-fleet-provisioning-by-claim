@@ -5,7 +5,14 @@ as a device provisioning plugin. The plugin provides the ability to provision a 
 [AWS FleetProvisioning Service](https://docs.aws.amazon.com/iot/latest/developerguide/provision-wo-cert.html). 
 
 ##Setup before running the plugin
-TBD
+Following setup is required in the cloud before the plugin can run successfully
+- Create provisioning template in the AWS account that is to be used for the device
+- Create claim certificate for the provisioning template
+
+The plugin requires following artifacts on the device before starting greengrass with plugin
+- Claim certificate for the provisioning template at a secure path
+- FleetProvisioningByClaim.jar file at a secure path
+- config.yaml with the plugin parameters which will be used to initialize greengrass
 
 ##Parameters
 This plugin takes following parameters
@@ -36,6 +43,14 @@ This plugin takes following parameters
 - **proxyUserName:** The user name to use to authenticate to the proxy server.
 - **proxyPassword:** The password to use to authenticate to the proxy server.
 
+##Command to start greengrass with plugin
+
+Use following command to start greengrass with provisioning plugin on the device
+
+`sudo -E java -Dlog.store=FILE -jar ./GreengrassCore/lib/Greengrass.jar 
+-i <secure_path_to_config>/config.yaml 
+--trusted-plugin <secure_path_to_plugin_jar>/FleetProvisioningByClaim.jar 
+-r /home/ec2-user/demo/greengrass/v2`
 
 
 ## License
