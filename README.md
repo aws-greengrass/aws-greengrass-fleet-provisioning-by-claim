@@ -4,7 +4,7 @@ This plugin is meant to run with [aws-greengrass-nucleus](https://github.com/aws
 as a device provisioning plugin. The plugin provides the ability to provision a Greengrass device using 
 [AWS FleetProvisioning Service](https://docs.aws.amazon.com/iot/latest/developerguide/provision-wo-cert.html). 
 
-##Setup before running the plugin
+## Setup before running the plugin
 Following setup is required in the cloud before the plugin can run successfully
 - Create provisioning template in the AWS account that is to be used for the device
 - Create claim certificate for the provisioning template
@@ -14,10 +14,10 @@ The plugin requires following artifacts on the device before starting greengrass
 - FleetProvisioningByClaim.jar file at a secure path
 - config.yaml with the plugin parameters which will be used to initialize greengrass
 
-##Parameters
+## Parameters
 This plugin takes following parameters
 
-###Required
+### Required
 - **provisioningTemplate**: The provisioning template name
 - **claimCertificatePath**: Path of the claim certificate on the device.
 - **claimCertificatePrivateKeyPath**: Path of the claim certificate private key on the device
@@ -25,7 +25,7 @@ This plugin takes following parameters
 - **iotDataEndpoint**: IoT data endpoint for the AWS account
 - **rootPath**: Root path for Greengrass
 
-###Optional
+### Optional
 - **deviceId**: The device identifier which will be used as client id in the mqtt connection to AWS IoT
 - **templateParameters**: Map<String, String> of parameters which will be passed to provisioning template 
 - **awsRegion**: AWS Region
@@ -43,7 +43,7 @@ This plugin takes following parameters
 - **proxyUserName:** The user name to use to authenticate to the proxy server.
 - **proxyPassword:** The password to use to authenticate to the proxy server.
 
-##Command to start greengrass with plugin
+## Command to start greengrass with plugin
 
 Use following command to start greengrass with provisioning plugin on the device
 
