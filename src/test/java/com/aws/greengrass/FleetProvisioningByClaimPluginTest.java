@@ -45,6 +45,7 @@ import static com.aws.greengrass.FleetProvisioningByClaimPlugin.MISSING_REQUIRED
 import static com.aws.greengrass.FleetProvisioningByClaimPlugin.PRIVATE_KEY_PATH_RELATIVE_TO_ROOT;
 import static com.aws.greengrass.FleetProvisioningByClaimPlugin.PROVISIONING_TEMPLATE_PARAMETER_NAME;
 import static com.aws.greengrass.FleetProvisioningByClaimPlugin.PROXY_URL_PARAMETER_NAME;
+import static com.aws.greengrass.FleetProvisioningByClaimPlugin.CSR_PATH_PARAMETER_NAME;
 import static com.aws.greengrass.FleetProvisioningByClaimPlugin.ROOT_CA_PATH_PARAMETER_NAME;
 import static com.aws.greengrass.FleetProvisioningByClaimPlugin.ROOT_PATH_PARAMETER_NAME;
 import static com.aws.greengrass.FleetProvisioningByClaimPlugin.TEMPLATE_PARAMETERS_PARAMETER_NAME;
@@ -144,6 +145,8 @@ public class FleetProvisioningByClaimPluginTest {
                 IOT_CREDENTIAL_ENDPOINT_PARAMETER_NAME)));
         assertFalse(errorMessage.contains(String.format(MISSING_REQUIRED_PARAMETERS_ERROR_FORMAT,
                 IOT_ROLE_ALIAS_PARAMETER_NAME)));
+        assertFalse(errorMessage.contains(String.format(MISSING_REQUIRED_PARAMETERS_ERROR_FORMAT,
+                CSR_PATH_PARAMETER_NAME)));
     }
 
     @Test

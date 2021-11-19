@@ -26,6 +26,7 @@ This plugin takes following parameters
 - **rootPath**: Root path for Greengrass
 
 ### Optional
+- **csrPath**: CSR file to be used for creating the device certificate from a CSR
 - **deviceId**: The device identifier which will be used as client id in the mqtt connection to AWS IoT
 - **templateParameters**: Map<String, String> of parameters which will be passed to provisioning template 
 - **awsRegion**: AWS Region

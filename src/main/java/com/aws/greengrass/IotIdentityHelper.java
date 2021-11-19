@@ -11,6 +11,9 @@ import com.aws.greengrass.provisioning.exceptions.RetryableProvisioningException
 import software.amazon.awssdk.crt.mqtt.MqttClientConnection;
 import software.amazon.awssdk.crt.mqtt.QualityOfService;
 import software.amazon.awssdk.iot.iotidentity.IotIdentityClient;
+import software.amazon.awssdk.iot.iotidentity.model.CreateCertificateFromCsrRequest;
+import software.amazon.awssdk.iot.iotidentity.model.CreateCertificateFromCsrResponse;
+import software.amazon.awssdk.iot.iotidentity.model.CreateCertificateFromCsrSubscriptionRequest;
 import software.amazon.awssdk.iot.iotidentity.model.CreateKeysAndCertificateRequest;
 import software.amazon.awssdk.iot.iotidentity.model.CreateKeysAndCertificateResponse;
 import software.amazon.awssdk.iot.iotidentity.model.CreateKeysAndCertificateSubscriptionRequest;
@@ -89,6 +92,67 @@ public class IotIdentityHelper {
         FutureExceptionHandler.getFutureAfterCompletion(publishKeys);
 
         logger.atInfo().log("Published to CreateKeysAndCertificate");
+        return createFuture;
+    }
+
+    /**
+     * Creates Certificate from CSR in AWS Iot and returns them back.
+     * @param certificateSigningRequest Certificate Signing Request string
+     * @return {@link CreateCertificateFromCsrResponse}
+     * @throws InterruptedException on thread interruption
+     * @throws RetryableProvisioningException on transient errors like timeout
+     */
+    public Future<CreateCertificateFromCsrResponse> createCertificateFromCsr(
+                String certificateSigningRequest) throws InterruptedException,
+            RetryableProvisioningException {
+        return createCertificateFromCsr(certificateSigningRequest, 
+                AWS_IOT_DEFAULT_TIMEOUT_SECONDS);
+    }
+
+    /**
+     * Creates certificate from CSR in AWS Iot and returns them back.
+     * @param timeout iot connection timeout
+     * @param certificateSigningRequest Certificate Signing Request string
+     * @return {@link CreateCertificateFromCsrResponse}
+     * @throws InterruptedException on thread interruption
+     * @throws RetryableProvisioningException on transient errors like timeout
+     */
+    public Future<CreateCertificateFromCsrResponse> createCertificateFromCsr(
+            String certificateSigningRequest, int timeout) throws InterruptedException,
+            RetryableProvisioningException {
+
+        CompletableFuture<CreateCertificateFromCsrResponse> createFuture = new CompletableFuture<>();
+        CreateCertificateFromCsrSubscriptionRequest createCertificateFromCsrSubscriptionRequest =
+                new CreateCertificateFromCsrSubscriptionRequest();
+        
+        CompletableFuture<Integer> csrSubscribedAccepted =
+                iotIdentityClient.SubscribeToCreateCertificateFromCsrAccepted(
+                createCertificateFromCsrSubscriptionRequest,
+                QualityOfService.AT_LEAST_ONCE,
+                (response) -> createFuture.complete(response));
+        FutureExceptionHandler.getFutureAfterCompletion(csrSubscribedAccepted, timeout);
+
+        logger.atInfo().log("Subscribed to CreatedCertificateFromCsrAccepted");
+
+        CompletableFuture<Integer> csrSubscribedRejected =
+                iotIdentityClient.SubscribeToCreateCertificateFromCsrRejected(
+                    createCertificateFromCsrSubscriptionRequest,
+                    QualityOfService.AT_LEAST_ONCE,
+                    (errorResponse) -> {
+                        RuntimeException e = new RuntimeException(errorResponse.errorMessage);
+                        createFuture.completeExceptionally(e);
+                    });
+        FutureExceptionHandler.getFutureAfterCompletion(csrSubscribedRejected, timeout);
+        logger.atInfo().log("Subscribed to CreateCertificateFromCsrRejected");
+        CreateCertificateFromCsrRequest createCertificateFromCsrRequest = new CreateCertificateFromCsrRequest();
+        createCertificateFromCsrRequest.certificateSigningRequest = certificateSigningRequest;
+
+        CompletableFuture<Integer> publishCsr = iotIdentityClient.PublishCreateCertificateFromCsr(
+                createCertificateFromCsrRequest,
+                QualityOfService.AT_LEAST_ONCE);
+        FutureExceptionHandler.getFutureAfterCompletion(publishCsr);
+
+        logger.atInfo().log("Published to CreateCertificateFromCsr");
         return createFuture;
     }
 

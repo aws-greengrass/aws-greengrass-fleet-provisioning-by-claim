@@ -21,6 +21,7 @@ import software.amazon.awssdk.crt.io.ClientBootstrap;
 import software.amazon.awssdk.crt.io.EventLoopGroup;
 import software.amazon.awssdk.crt.io.HostResolver;
 import software.amazon.awssdk.crt.mqtt.MqttClientConnection;
+import software.amazon.awssdk.iot.iotidentity.model.CreateCertificateFromCsrResponse;
 import software.amazon.awssdk.iot.iotidentity.model.CreateKeysAndCertificateResponse;
 import software.amazon.awssdk.iot.iotidentity.model.RegisterThingResponse;
 
@@ -63,6 +64,7 @@ public class FleetProvisioningByClaimPlugin implements DeviceIdentityInterface {
     static final String PROXY_URL_PARAMETER_NAME = "proxyUrl";
     static final String PROXY_USERNAME_PARAMETER_NAME = "proxyUsername";
     static final String PROXY_PASSWORD_PARAMETER_NAME = "proxyPassword";
+    static final String CSR_PATH_PARAMETER_NAME = "csrPath";
 
     static final String MISSING_REQUIRED_PARAMETERS_ERROR_FORMAT =
             "Required parameter %s missing for " + PLUGIN_NAME;
@@ -103,6 +105,8 @@ public class FleetProvisioningByClaimPlugin implements DeviceIdentityInterface {
         if (parameterMap.get(MQTT_PORT_PARAMETER_NAME) != null) {
             mqttPort = Integer.valueOf(parameterMap.get(MQTT_PORT_PARAMETER_NAME).toString());
         }
+        String csrPath = parameterMap.get(CSR_PATH_PARAMETER_NAME) == null ? null
+                : parameterMap.get(CSR_PATH_PARAMETER_NAME).toString();
         String rootCaPath = parameterMap.get(ROOT_CA_PATH_PARAMETER_NAME).toString();
         String templateName = parameterMap.get(PROVISIONING_TEMPLATE_PARAMETER_NAME).toString();
         String clientId = parameterMap.get(DEVICE_ID_PARAMETER_NAME) == null ? UUID.randomUUID().toString()
@@ -140,11 +144,26 @@ public class FleetProvisioningByClaimPlugin implements DeviceIdentityInterface {
                     "Caught exception while establishing connection to AWS Iot");
 
             IotIdentityHelper iotIdentityHelper = iotIdentityHelperFactory.getInstance(connection);
-            CreateKeysAndCertificateResponse response;
-            response = FutureExceptionHandler.getFutureAfterCompletion(iotIdentityHelper.createKeysAndCertificate(),
-                    "Caught exception during PublishCreateKeysAndCertificate");
 
-            writeCertificateAndKeyToPath(response, parameterMap.get(ROOT_PATH_PARAMETER_NAME).toString());
+            String certificateOwnershipToken = null;
+            if (csrPath == null) {
+                CreateKeysAndCertificateResponse response;
+                response = FutureExceptionHandler.getFutureAfterCompletion(iotIdentityHelper.createKeysAndCertificate(),
+                        "Caught exception during PublishCreateKeysAndCertificate");
+
+                writeCertificateAndKeyToPath(response, parameterMap.get(ROOT_PATH_PARAMETER_NAME).toString());
+                certificateOwnershipToken = response.certificateOwnershipToken;
+            } else {
+                Path csrFile = Paths.get(csrPath);
+                String csr = new String(Files.readAllBytes(csrFile), StandardCharsets.UTF_8);
+                CreateCertificateFromCsrResponse response;
+                response = FutureExceptionHandler.getFutureAfterCompletion(
+                        iotIdentityHelper.createCertificateFromCsr(csr),
+                        "Caught exception during PublishCreateCertificateFromCsr");
+
+                writeCertificateToPath(response, parameterMap.get(ROOT_PATH_PARAMETER_NAME).toString());
+                certificateOwnershipToken = response.certificateOwnershipToken;
+            }
 
 
             HashMap<String, String> templateParameterHashMap = new HashMap<>();
@@ -152,7 +171,7 @@ public class FleetProvisioningByClaimPlugin implements DeviceIdentityInterface {
                 templateParameters.forEach((k, v) -> templateParameterHashMap.put(k, v.toString()));
             }
             Future<RegisterThingResponse> registerFuture = iotIdentityHelper
-                    .registerThing(response.certificateOwnershipToken, templateName, templateParameterHashMap);
+                    .registerThing(certificateOwnershipToken, templateName, templateParameterHashMap);
             RegisterThingResponse registerThingResponse = FutureExceptionHandler
                     .getFutureAfterCompletion(registerFuture, "Caught exception during registering Iot Thing");
             CompletableFuture<Void> disconnected = connection.disconnect();
@@ -163,6 +182,9 @@ public class FleetProvisioningByClaimPlugin implements DeviceIdentityInterface {
         } catch (CrtRuntimeException | InterruptedException ex) {
             logger.atError().setCause(ex).log("Exception encountered while getting device identity information");
             throw ex;
+        } catch (IOException ex) {
+            logger.atError().setCause(ex).log("Caught exception while reading the CSR file");
+            throw new RuntimeException(ex);
         }
     }
 
@@ -244,6 +266,19 @@ public class FleetProvisioningByClaimPlugin implements DeviceIdentityInterface {
             Platform.getInstance().setPermissions(FileSystemPermission.builder().ownerRead(true).build(), keyPath);
         } catch (IOException e) {
             logger.atError().log("Caught exception while writing certificate and private key to file");
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void writeCertificateToPath(CreateCertificateFromCsrResponse response, String rootPath) {
+        try {
+            Path certPath = Paths.get(rootPath, DEVICE_CERTIFICATE_PATH_RELATIVE_TO_ROOT);
+            Files.createFile(certPath);
+            Files.write(certPath, response.certificatePem.getBytes(StandardCharsets.UTF_8));
+            Platform.getInstance().setPermissions(FileSystemPermission.builder()
+                    .ownerRead(true).ownerWrite(true).ownerExecute(true).build(), certPath);
+        } catch (IOException e) {
+            logger.atError().log("Caught exception while writing certificate to file", e);
             throw new RuntimeException(e);
         }
     }
