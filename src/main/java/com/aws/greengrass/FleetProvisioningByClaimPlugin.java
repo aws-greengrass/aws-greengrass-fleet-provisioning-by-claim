@@ -70,6 +70,8 @@ public class FleetProvisioningByClaimPlugin implements DeviceIdentityInterface {
     static final String DEVICE_CERTIFICATE_PATH_RELATIVE_TO_ROOT = "/thingCert.crt";
     static final String PRIVATE_KEY_PATH_RELATIVE_TO_ROOT = "/privKey.key";
 
+    public static final boolean IS_WINDOWS = System.getProperty("os.name").toLowerCase().contains("wind");
+
     private final IotIdentityHelperFactory iotIdentityHelperFactory;
     private final MqttConnectionHelper mqttConnectionHelper;
 
@@ -204,10 +206,10 @@ public class FleetProvisioningByClaimPlugin implements DeviceIdentityInterface {
 
         SystemConfiguration systemConfiguration = SystemConfiguration.builder()
                 .thingName(registerThingResponse.thingName)
-                .privateKeyPath(parameterMap.get(ROOT_PATH_PARAMETER_NAME).toString()
-                        + PRIVATE_KEY_PATH_RELATIVE_TO_ROOT)
-                .certificateFilePath(parameterMap.get(ROOT_PATH_PARAMETER_NAME).toString()
-                        + DEVICE_CERTIFICATE_PATH_RELATIVE_TO_ROOT)
+                .privateKeyPath(getFileUriOrString(Paths.get(parameterMap.get(ROOT_PATH_PARAMETER_NAME).toString(),
+                        PRIVATE_KEY_PATH_RELATIVE_TO_ROOT)))
+                .certificateFilePath(getFileUriOrString(Paths.get(parameterMap.get(ROOT_PATH_PARAMETER_NAME).toString(),
+                        DEVICE_CERTIFICATE_PATH_RELATIVE_TO_ROOT)))
                 .rootCAPath(parameterMap.get(ROOT_CA_PATH_PARAMETER_NAME).toString())
                 .build();
 
@@ -215,6 +217,13 @@ public class FleetProvisioningByClaimPlugin implements DeviceIdentityInterface {
                 .systemConfiguration(systemConfiguration)
                 .nucleusConfiguration(nucleusConfiguration)
                 .build();
+    }
+
+    static String getFileUriOrString(Path p) {
+        if (IS_WINDOWS) {
+            return p.toUri().toString();
+        }
+        return p.toString();
     }
 
     private void checkRequiredParameterPresent(Map<String, Object> parameterMap, List<String> errors,
