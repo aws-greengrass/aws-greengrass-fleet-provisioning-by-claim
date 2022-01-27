@@ -25,8 +25,10 @@ import software.amazon.awssdk.iot.iotidentity.model.CreateKeysAndCertificateResp
 import software.amazon.awssdk.iot.iotidentity.model.RegisterThingResponse;
 
 import java.io.IOException;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -41,6 +43,7 @@ import static com.aws.greengrass.FleetProvisioningByClaimPlugin.DEVICE_ID_PARAME
 import static com.aws.greengrass.FleetProvisioningByClaimPlugin.IOT_CREDENTIAL_ENDPOINT_PARAMETER_NAME;
 import static com.aws.greengrass.FleetProvisioningByClaimPlugin.IOT_DATA_ENDPOINT_PARAMETER_NAME;
 import static com.aws.greengrass.FleetProvisioningByClaimPlugin.IOT_ROLE_ALIAS_PARAMETER_NAME;
+import static com.aws.greengrass.FleetProvisioningByClaimPlugin.IS_WINDOWS;
 import static com.aws.greengrass.FleetProvisioningByClaimPlugin.MISSING_REQUIRED_PARAMETERS_ERROR_FORMAT;
 import static com.aws.greengrass.FleetProvisioningByClaimPlugin.PRIVATE_KEY_PATH_RELATIVE_TO_ROOT;
 import static com.aws.greengrass.FleetProvisioningByClaimPlugin.PROVISIONING_TEMPLATE_PARAMETER_NAME;
@@ -48,6 +51,7 @@ import static com.aws.greengrass.FleetProvisioningByClaimPlugin.PROXY_URL_PARAME
 import static com.aws.greengrass.FleetProvisioningByClaimPlugin.ROOT_CA_PATH_PARAMETER_NAME;
 import static com.aws.greengrass.FleetProvisioningByClaimPlugin.ROOT_PATH_PARAMETER_NAME;
 import static com.aws.greengrass.FleetProvisioningByClaimPlugin.TEMPLATE_PARAMETERS_PARAMETER_NAME;
+import static com.aws.greengrass.FleetProvisioningByClaimPlugin.getFileUriOrString;
 import static com.aws.greengrass.testcommons.testutilities.ExceptionLogProtector.ignoreExceptionOfType;
 import static com.aws.greengrass.testcommons.testutilities.ExceptionLogProtector.ignoreExceptionUltimateCauseOfType;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -163,11 +167,24 @@ public class FleetProvisioningByClaimPluginTest {
 
         ProvisionConfiguration.SystemConfiguration systemConfiguration =
                 provisionConfiguration.getSystemConfiguration();
-        assertEquals(rootDir.toString() + DEVICE_CERTIFICATE_PATH_RELATIVE_TO_ROOT,
+        assertEquals(getFileUriOrString(Paths.get(rootDir.toString(), DEVICE_CERTIFICATE_PATH_RELATIVE_TO_ROOT)),
                 systemConfiguration.getCertificateFilePath());
+        if (IS_WINDOWS) {
+            assertTrue(systemConfiguration.getCertificateFilePath().startsWith("file:///C:/"));
+            assertTrue(Files.exists(Paths.get(URI.create(systemConfiguration.getCertificateFilePath()))));
+        } else {
+            assertFalse(systemConfiguration.getCertificateFilePath().startsWith("file:"));
+        }
 
-        assertEquals(rootDir.toString()+PRIVATE_KEY_PATH_RELATIVE_TO_ROOT,
+        assertEquals(getFileUriOrString(Paths.get(rootDir.toString(), PRIVATE_KEY_PATH_RELATIVE_TO_ROOT)),
                 systemConfiguration.getPrivateKeyPath());
+        if (IS_WINDOWS) {
+            assertTrue(systemConfiguration.getPrivateKeyPath().startsWith("file:///C:/"));
+            assertTrue(Files.exists(Paths.get(URI.create(systemConfiguration.getPrivateKeyPath()))));
+        } else {
+            assertFalse(systemConfiguration.getPrivateKeyPath().startsWith("file:"));
+        }
+
         assertEquals(MOCK_THING_NAME, systemConfiguration.getThingName());
         assertEquals(rootCAPath.toString(), systemConfiguration.getRootCAPath());
 

@@ -7,6 +7,7 @@
 <FindBugsFilter>
     <Match>
         <Or>
+            <Bug pattern="DM_CONVERT_CASE"/>
             <Bug pattern="RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE"/>
             <Bug pattern="RCN_REDUNDANT_NULLCHECK_WOULD_HAVE_BEEN_A_NPE"/>
         </Or>
