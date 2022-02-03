@@ -12,6 +12,8 @@ import com.aws.greengrass.provisioning.exceptions.RetryableProvisioningException
 import com.aws.greengrass.testcommons.testutilities.GGExtension;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledOnOs;
+import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.io.TempDir;
@@ -191,6 +193,42 @@ public class FleetProvisioningByClaimPluginTest {
         ProvisionConfiguration.NucleusConfiguration nucleusConfiguration =
                 provisionConfiguration.getNucleusConfiguration();
         assertEquals(MOCK_IOT_DATA_ENDPOINT, nucleusConfiguration.getIotDataEndpoint());
+    }
+
+    @Test
+    @EnabledOnOs(OS.WINDOWS)
+    /*
+     * Additional test on Windows to handle root path given with forward slash.
+     * Normally, file paths on Windows use backslash as separator. We also allow forward slash like C:/Users/foo
+     * for customer's convenience. This test makes sure we can produce correct URI for cert and private key paths.
+     */
+    public void GIVEN_on_windows_root_path_using_forward_slash_WHEN_plugin_called_THEN_cert_and_private_key_paths_correct()
+            throws RetryableProvisioningException, InterruptedException {
+        Map<String, Object> parameterMap = createRequiredParameterMap();
+        // Put in a root path that uses forward slash as separator
+        // Taking the substring is required because first character from getRawPath is a /
+        parameterMap.put(ROOT_PATH_PARAMETER_NAME, rootDir.toUri().getRawPath().substring(1));
+
+        ProvisionContext provisionContext = new ProvisionContext(DEFAULT_PROVISIONING_POLICY, parameterMap);
+        when(mockIotIdentityHelper.createKeysAndCertificate()).thenReturn(createMockCreateKeysAndCertificateResponse());
+        when(mockIotIdentityHelper.registerThing(eq(MOCK_CERTIFICATE_OWNERSHIP_TOKEN), eq(MOCK_PROV_TEMPLATE_NAME),
+                any())).thenReturn(createMockRegisterThingResponse());
+
+        ProvisionConfiguration provisionConfiguration =
+                fleetProvisioningByClaimPlugin.updateIdentityConfiguration(provisionContext);
+
+        ProvisionConfiguration.SystemConfiguration systemConfiguration =
+                provisionConfiguration.getSystemConfiguration();
+
+        assertEquals(getFileUriOrString(Paths.get(rootDir.toString(), DEVICE_CERTIFICATE_PATH_RELATIVE_TO_ROOT)),
+                systemConfiguration.getCertificateFilePath());
+        assertTrue(systemConfiguration.getCertificateFilePath().startsWith("file:///C:/"));
+        assertTrue(Files.exists(Paths.get(URI.create(systemConfiguration.getCertificateFilePath()))));
+
+        assertEquals(getFileUriOrString(Paths.get(rootDir.toString(), PRIVATE_KEY_PATH_RELATIVE_TO_ROOT)),
+                systemConfiguration.getPrivateKeyPath());
+        assertTrue(systemConfiguration.getPrivateKeyPath().startsWith("file:///C:/"));
+        assertTrue(Files.exists(Paths.get(URI.create(systemConfiguration.getPrivateKeyPath()))));
     }
 
     @Test
