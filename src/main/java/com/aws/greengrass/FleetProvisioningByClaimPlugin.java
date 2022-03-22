@@ -206,10 +206,10 @@ public class FleetProvisioningByClaimPlugin implements DeviceIdentityInterface {
 
         SystemConfiguration systemConfiguration = SystemConfiguration.builder()
                 .thingName(registerThingResponse.thingName)
-                .privateKeyPath(getFileUriOrString(Paths.get(parameterMap.get(ROOT_PATH_PARAMETER_NAME).toString(),
-                        PRIVATE_KEY_PATH_RELATIVE_TO_ROOT)))
-                .certificateFilePath(getFileUriOrString(Paths.get(parameterMap.get(ROOT_PATH_PARAMETER_NAME).toString(),
-                        DEVICE_CERTIFICATE_PATH_RELATIVE_TO_ROOT)))
+                .privateKeyPath(Paths.get(parameterMap.get(ROOT_PATH_PARAMETER_NAME).toString(),
+                        PRIVATE_KEY_PATH_RELATIVE_TO_ROOT).normalize().toString())
+                .certificateFilePath(Paths.get(parameterMap.get(ROOT_PATH_PARAMETER_NAME).toString(),
+                        DEVICE_CERTIFICATE_PATH_RELATIVE_TO_ROOT).normalize().toString())
                 .rootCAPath(parameterMap.get(ROOT_CA_PATH_PARAMETER_NAME).toString())
                 .build();
 
@@ -217,13 +217,6 @@ public class FleetProvisioningByClaimPlugin implements DeviceIdentityInterface {
                 .systemConfiguration(systemConfiguration)
                 .nucleusConfiguration(nucleusConfiguration)
                 .build();
-    }
-
-    static String getFileUriOrString(Path p) {
-        if (IS_WINDOWS) {
-            return p.toUri().toString();
-        }
-        return p.toString();
     }
 
     private void checkRequiredParameterPresent(Map<String, Object> parameterMap, List<String> errors,
