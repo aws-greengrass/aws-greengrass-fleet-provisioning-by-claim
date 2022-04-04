@@ -24,6 +24,7 @@ import java.util.concurrent.Future;
 
 import static com.aws.greengrass.FutureExceptionHandler.AWS_IOT_DEFAULT_TIMEOUT_SECONDS;
 
+@SuppressWarnings("PMD.LooseCoupling")
 public class IotIdentityHelper {
     
     private static final Logger logger = LogManager.getLogger(IotIdentityHelper.class);
@@ -66,8 +67,7 @@ public class IotIdentityHelper {
         CompletableFuture<Integer> keysSubscribedAccepted =
                 iotIdentityClient.SubscribeToCreateKeysAndCertificateAccepted(
                 createKeysAndCertificateSubscriptionRequest,
-                QualityOfService.AT_LEAST_ONCE,
-                (response) -> createFuture.complete(response));
+                QualityOfService.AT_LEAST_ONCE, createFuture::complete);
         FutureExceptionHandler.getFutureAfterCompletion(keysSubscribedAccepted, timeout);
 
         logger.atInfo().log("Subscribed to CreateKeysAndCertificateAccepted");
@@ -132,8 +132,7 @@ public class IotIdentityHelper {
                 (response) -> {
                     logger.atInfo().log("Received register thing response");
                     registerFuture.complete(response);
-                },
-                (exception) -> registerFuture.completeExceptionally(exception));
+                }, registerFuture::completeExceptionally);
         FutureExceptionHandler.getFutureAfterCompletion(subscribedRegisterAccepted, iotTimeout);
         logger.atInfo().log("Subscribed to SubscribeToRegisterThingAccepted");
 
@@ -143,8 +142,7 @@ public class IotIdentityHelper {
                 (errorResponse) -> {
                     RuntimeException e = new RuntimeException(errorResponse.errorMessage);
                     registerFuture.completeExceptionally(e);
-                },
-                (exception) -> registerFuture.completeExceptionally(exception));
+                }, registerFuture::completeExceptionally);
         FutureExceptionHandler.getFutureAfterCompletion(subscribedRegisterRejected, iotTimeout);
         logger.atInfo().log("Subscribed to SubscribeToRegisterThingRejected");
 

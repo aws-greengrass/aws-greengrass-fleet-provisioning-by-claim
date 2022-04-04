@@ -48,23 +48,23 @@ public class MqttConnectionHelper {
      * @return {@link MqttClientConnection}
      */
     public MqttClientConnection getMqttConnection(MqttConnectionParameters mqttConnectionParameters) {
-        AwsIotMqttConnectionBuilder builder =
-                AwsIotMqttConnectionBuilder.newMtlsBuilderFromPath(mqttConnectionParameters.getCertPath(),
-                        mqttConnectionParameters.getKeyPath())
+        try (AwsIotMqttConnectionBuilder builder = AwsIotMqttConnectionBuilder.newMtlsBuilderFromPath(
+                        mqttConnectionParameters.getCertPath(), mqttConnectionParameters.getKeyPath())
                 .withCertificateAuthorityFromPath(null, mqttConnectionParameters.getRootCaPath())
                 .withEndpoint(mqttConnectionParameters.getEndpoint())
                 .withClientId(mqttConnectionParameters.getClientId())
                 .withCleanSession(true)
                 .withBootstrap(mqttConnectionParameters.getClientBootstrap())
-                .withConnectionEventCallbacks(callbacks);
+                .withConnectionEventCallbacks(callbacks)) {
 
-        if (mqttConnectionParameters.getMqttPort() != null) {
-            builder.withPort(mqttConnectionParameters.getMqttPort().shortValue());
+            if (mqttConnectionParameters.getMqttPort() != null) {
+                builder.withPort(mqttConnectionParameters.getMqttPort().shortValue());
+            }
+            if (mqttConnectionParameters.getHttpProxyOptions() != null) {
+                builder.withHttpProxyOptions(mqttConnectionParameters.getHttpProxyOptions());
+            }
+            return builder.build();
         }
-        if (mqttConnectionParameters.getHttpProxyOptions() != null) {
-            builder.withHttpProxyOptions(mqttConnectionParameters.getHttpProxyOptions());
-        }
-        return builder.build();
     }
 
 
