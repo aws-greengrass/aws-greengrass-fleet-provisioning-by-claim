@@ -14,10 +14,12 @@ import lombok.Getter;
 import software.amazon.awssdk.crt.CRT;
 import software.amazon.awssdk.crt.http.HttpProxyOptions;
 import software.amazon.awssdk.crt.io.ClientBootstrap;
+import software.amazon.awssdk.crt.io.TlsContext;
 import software.amazon.awssdk.crt.mqtt.MqttClientConnection;
 import software.amazon.awssdk.crt.mqtt.MqttClientConnectionEvents;
 import software.amazon.awssdk.iot.AwsIotMqttConnectionBuilder;
 
+import java.net.URI;
 import javax.annotation.Nullable;
 
 public class MqttConnectionHelper {
@@ -71,10 +73,12 @@ public class MqttConnectionHelper {
      * @param proxyUrl The proxyUrl of the format scheme://userinfo@host:port.
      * @param proxyUserName username for proxy. It will be ignored if proxyUrl has username info
      * @param proxyPassword password for proxy. It will be ignored if the proxyUrl has password info
+     * @param tlsContext optional tls context for HTTPS proxy.
      * @return {@link HttpProxyOptions}
      */
     @Nullable
-    public static HttpProxyOptions getHttpProxyOptions(String proxyUrl, String proxyUserName, String proxyPassword) {
+    public static HttpProxyOptions getHttpProxyOptions(String proxyUrl, String proxyUserName, String proxyPassword,
+                                                       @Nullable TlsContext tlsContext) {
         if (Utils.isEmpty(proxyUrl)) {
             return null;
         }
@@ -82,6 +86,10 @@ public class MqttConnectionHelper {
         HttpProxyOptions httpProxyOptions = new HttpProxyOptions();
         httpProxyOptions.setHost(ProxyUtils.getHostFromProxyUrl(proxyUrl));
         httpProxyOptions.setPort(ProxyUtils.getPortFromProxyUrl(proxyUrl));
+
+        if ("https".equalsIgnoreCase(getSchemeFromProxyUrl(proxyUrl))) {
+            httpProxyOptions.setTlsContext(tlsContext);
+        }
 
         String proxyUsername = ProxyUtils.getProxyUsername(proxyUrl, proxyUserName);
         if (Utils.isNotEmpty(proxyUsername)) {
@@ -91,6 +99,10 @@ public class MqttConnectionHelper {
         }
 
         return httpProxyOptions;
+    }
+
+    private static String getSchemeFromProxyUrl(String url) {
+        return URI.create(url).getScheme();
     }
 
     @Builder
