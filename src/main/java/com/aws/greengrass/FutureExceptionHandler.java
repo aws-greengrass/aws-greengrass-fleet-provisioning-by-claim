@@ -18,7 +18,7 @@ import java.util.concurrent.TimeoutException;
 public final class FutureExceptionHandler {
     public static final int AWS_IOT_DEFAULT_TIMEOUT_SECONDS = 30;
 
-    private static Logger logger = LogManager.getLogger(FutureExceptionHandler.class);
+    private static final Logger logger = LogManager.getLogger(FutureExceptionHandler.class);
 
     // For PMD warning
     private FutureExceptionHandler() {
@@ -50,6 +50,7 @@ public final class FutureExceptionHandler {
      * @throws RetryableProvisioningException when retryable error happens like timeout
      * @throws RuntimeException when any other error happens
      */
+    @SuppressWarnings("PMD.PreserveStackTrace")
     public static <T> T getFutureAfterCompletion(Future<T> future, int timeout, String... errorMessage)
             throws InterruptedException, RetryableProvisioningException {
         try {
@@ -62,8 +63,6 @@ public final class FutureExceptionHandler {
             } catch (TimeoutException e1) {
                 logger.atWarn().setCause(e1).kv("retryable", true).log(errorMessage);
                 throw new RetryableProvisioningException(e1);
-            } catch (InterruptedException e1) {
-                throw e1;
             } catch (ExecutionException e1) {
                 logger.atError().setCause(e1).log(errorMessage);
                 throw new RuntimeException(e1.getCause());

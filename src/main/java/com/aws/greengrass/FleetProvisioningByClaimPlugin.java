@@ -18,8 +18,11 @@ import com.aws.greengrass.util.platforms.Platform;
 import software.amazon.awssdk.crt.CrtRuntimeException;
 import software.amazon.awssdk.crt.http.HttpProxyOptions;
 import software.amazon.awssdk.crt.io.ClientBootstrap;
+import software.amazon.awssdk.crt.io.ClientTlsContext;
 import software.amazon.awssdk.crt.io.EventLoopGroup;
 import software.amazon.awssdk.crt.io.HostResolver;
+import software.amazon.awssdk.crt.io.TlsContext;
+import software.amazon.awssdk.crt.io.TlsContextOptions;
 import software.amazon.awssdk.crt.mqtt.MqttClientConnection;
 import software.amazon.awssdk.iot.iotidentity.model.CreateKeysAndCertificateResponse;
 import software.amazon.awssdk.iot.iotidentity.model.RegisterThingResponse;
@@ -115,8 +118,9 @@ public class FleetProvisioningByClaimPlugin implements DeviceIdentityInterface {
                 : parameterMap.get(PROXY_USERNAME_PARAMETER_NAME).toString();
         String proxyPassword = parameterMap.get(PROXY_PASSWORD_PARAMETER_NAME) == null ? null
                 : parameterMap.get(PROXY_PASSWORD_PARAMETER_NAME).toString();
+        TlsContext proxyTlsContext = new ClientTlsContext(getTlsContextOptions(rootCaPath));
         HttpProxyOptions httpProxyOptions = MqttConnectionHelper.getHttpProxyOptions(proxyUrl, proxyUserName,
-                proxyPassword);
+                proxyPassword, proxyTlsContext);
         Map<String, Object> templateParameters =
                 (Map<String, Object>) parameterMap.get(TEMPLATE_PARAMETERS_PARAMETER_NAME);
 
@@ -165,7 +169,15 @@ public class FleetProvisioningByClaimPlugin implements DeviceIdentityInterface {
         } catch (CrtRuntimeException | InterruptedException ex) {
             logger.atError().setCause(ex).log("Exception encountered while getting device identity information");
             throw ex;
+        } finally {
+            proxyTlsContext.close();
         }
+    }
+
+    private static TlsContextOptions getTlsContextOptions(String rootCaPath) {
+        return Utils.isNotEmpty(rootCaPath)
+                ? TlsContextOptions.createDefaultClient().withCertificateAuthorityFromPath(null, rootCaPath)
+                : TlsContextOptions.createDefaultClient();
     }
 
     private void validateParameters(Map<String, Object> parameterMap) {

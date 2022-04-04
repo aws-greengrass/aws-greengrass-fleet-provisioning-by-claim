@@ -215,6 +215,7 @@ public class FleetProvisioningByClaimPluginTest {
         assertTrue(Files.exists(Paths.get(systemConfiguration.getPrivateKeyPath())));
     }
 
+    @SuppressWarnings("PMD.LooseCoupling")
     @Test
     public void GIVEN_optional_parameters_passed_to_plugin_WHEN_plugin_called_THEN_expected_methods_invoked() throws RetryableProvisioningException, InterruptedException {
         Map<String, Object> parameterMap = createRequiredParameterMap();
