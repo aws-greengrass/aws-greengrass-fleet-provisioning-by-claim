@@ -18,8 +18,11 @@ import com.aws.greengrass.util.platforms.Platform;
 import software.amazon.awssdk.crt.CrtRuntimeException;
 import software.amazon.awssdk.crt.http.HttpProxyOptions;
 import software.amazon.awssdk.crt.io.ClientBootstrap;
+import software.amazon.awssdk.crt.io.ClientTlsContext;
 import software.amazon.awssdk.crt.io.EventLoopGroup;
 import software.amazon.awssdk.crt.io.HostResolver;
+import software.amazon.awssdk.crt.io.TlsContext;
+import software.amazon.awssdk.crt.io.TlsContextOptions;
 import software.amazon.awssdk.crt.mqtt.MqttClientConnection;
 import software.amazon.awssdk.iot.iotidentity.model.CreateCertificateFromCsrResponse;
 import software.amazon.awssdk.iot.iotidentity.model.CreateKeysAndCertificateResponse;
@@ -72,6 +75,8 @@ public class FleetProvisioningByClaimPlugin implements DeviceIdentityInterface {
     static final String DEVICE_CERTIFICATE_PATH_RELATIVE_TO_ROOT = "/thingCert.crt";
     static final String PRIVATE_KEY_PATH_RELATIVE_TO_ROOT = "/privKey.key";
 
+    public static final boolean IS_WINDOWS = System.getProperty("os.name").toLowerCase().contains("wind");
+
     private final IotIdentityHelperFactory iotIdentityHelperFactory;
     private final MqttConnectionHelper mqttConnectionHelper;
 
@@ -117,8 +122,9 @@ public class FleetProvisioningByClaimPlugin implements DeviceIdentityInterface {
                 : parameterMap.get(PROXY_USERNAME_PARAMETER_NAME).toString();
         String proxyPassword = parameterMap.get(PROXY_PASSWORD_PARAMETER_NAME) == null ? null
                 : parameterMap.get(PROXY_PASSWORD_PARAMETER_NAME).toString();
+        TlsContext proxyTlsContext = new ClientTlsContext(getTlsContextOptions(rootCaPath));
         HttpProxyOptions httpProxyOptions = MqttConnectionHelper.getHttpProxyOptions(proxyUrl, proxyUserName,
-                proxyPassword);
+                proxyPassword, proxyTlsContext);
         Map<String, Object> templateParameters =
                 (Map<String, Object>) parameterMap.get(TEMPLATE_PARAMETERS_PARAMETER_NAME);
 
@@ -185,7 +191,15 @@ public class FleetProvisioningByClaimPlugin implements DeviceIdentityInterface {
         } catch (IOException ex) {
             logger.atError().setCause(ex).log("Caught exception while reading the CSR file");
             throw new RuntimeException(ex);
+        } finally {
+            proxyTlsContext.close();
         }
+    }
+
+    private static TlsContextOptions getTlsContextOptions(String rootCaPath) {
+        return Utils.isNotEmpty(rootCaPath)
+                ? TlsContextOptions.createDefaultClient().withCertificateAuthorityFromPath(null, rootCaPath)
+                : TlsContextOptions.createDefaultClient();
     }
 
     private void validateParameters(Map<String, Object> parameterMap) {
@@ -226,10 +240,10 @@ public class FleetProvisioningByClaimPlugin implements DeviceIdentityInterface {
 
         SystemConfiguration systemConfiguration = SystemConfiguration.builder()
                 .thingName(registerThingResponse.thingName)
-                .privateKeyPath(parameterMap.get(ROOT_PATH_PARAMETER_NAME).toString()
-                        + PRIVATE_KEY_PATH_RELATIVE_TO_ROOT)
-                .certificateFilePath(parameterMap.get(ROOT_PATH_PARAMETER_NAME).toString()
-                        + DEVICE_CERTIFICATE_PATH_RELATIVE_TO_ROOT)
+                .privateKeyPath(Paths.get(parameterMap.get(ROOT_PATH_PARAMETER_NAME).toString(),
+                        PRIVATE_KEY_PATH_RELATIVE_TO_ROOT).normalize().toString())
+                .certificateFilePath(Paths.get(parameterMap.get(ROOT_PATH_PARAMETER_NAME).toString(),
+                        DEVICE_CERTIFICATE_PATH_RELATIVE_TO_ROOT).normalize().toString())
                 .rootCAPath(parameterMap.get(ROOT_CA_PATH_PARAMETER_NAME).toString())
                 .build();
 

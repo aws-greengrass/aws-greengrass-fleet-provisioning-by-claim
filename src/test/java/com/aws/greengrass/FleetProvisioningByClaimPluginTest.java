@@ -12,6 +12,8 @@ import com.aws.greengrass.provisioning.exceptions.RetryableProvisioningException
 import com.aws.greengrass.testcommons.testutilities.GGExtension;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledOnOs;
+import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.io.TempDir;
@@ -27,6 +29,7 @@ import software.amazon.awssdk.iot.iotidentity.model.RegisterThingResponse;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -150,7 +153,7 @@ public class FleetProvisioningByClaimPluginTest {
     }
 
     @Test
-    public void GIVEN_all_req_parameter_passed_to_plugin_WHEN_plugin_called_THEN_expected_methods_invoked() throws RetryableProvisioningException, InterruptedException, IOException {
+    public void GIVEN_all_req_parameter_passed_to_plugin_WHEN_plugin_called_THEN_expected_methods_invoked() throws RetryableProvisioningException, InterruptedException {
         Map<String, Object> parameterMap = createRequiredParameterMap();
         ProvisionContext provisionContext = new ProvisionContext(DEFAULT_PROVISIONING_POLICY, parameterMap);
         when(mockIotIdentityHelper.createKeysAndCertificate()).thenReturn(createMockCreateKeysAndCertificateResponse());
@@ -166,11 +169,11 @@ public class FleetProvisioningByClaimPluginTest {
 
         ProvisionConfiguration.SystemConfiguration systemConfiguration =
                 provisionConfiguration.getSystemConfiguration();
-        assertEquals(rootDir.toString() + DEVICE_CERTIFICATE_PATH_RELATIVE_TO_ROOT,
+        assertEquals(Paths.get(rootDir.toString(), DEVICE_CERTIFICATE_PATH_RELATIVE_TO_ROOT).normalize().toString(),
                 systemConfiguration.getCertificateFilePath());
-
-        assertEquals(rootDir.toString()+PRIVATE_KEY_PATH_RELATIVE_TO_ROOT,
+        assertEquals(Paths.get(rootDir.toString(), PRIVATE_KEY_PATH_RELATIVE_TO_ROOT).normalize().toString(),
                 systemConfiguration.getPrivateKeyPath());
+
         assertEquals(MOCK_THING_NAME, systemConfiguration.getThingName());
         assertEquals(rootCAPath.toString(), systemConfiguration.getRootCAPath());
 
@@ -179,6 +182,43 @@ public class FleetProvisioningByClaimPluginTest {
         assertEquals(MOCK_IOT_DATA_ENDPOINT, nucleusConfiguration.getIotDataEndpoint());
     }
 
+    @Test
+    @EnabledOnOs(OS.WINDOWS)
+    /*
+     * Additional test on Windows to handle root path given with forward slash.
+     * Normally, file paths on Windows use backslash as separator. We also allow forward slash like C:/Users/foo
+     * for customer's convenience. This test makes sure we can produce correct paths for cert and private key paths.
+     */
+    public void GIVEN_on_windows_root_path_using_forward_slash_WHEN_plugin_called_THEN_cert_and_private_key_paths_correct()
+            throws RetryableProvisioningException, InterruptedException {
+        Map<String, Object> parameterMap = createRequiredParameterMap();
+        // Put in a root path that uses forward slash as separator
+        // Taking the substring is required because first character from getRawPath is a /
+        String testPath = rootDir.toUri().getRawPath().substring(1);
+        assertTrue(testPath.startsWith("C:/"));
+        parameterMap.put(ROOT_PATH_PARAMETER_NAME, testPath);
+
+        ProvisionContext provisionContext = new ProvisionContext(DEFAULT_PROVISIONING_POLICY, parameterMap);
+        when(mockIotIdentityHelper.createKeysAndCertificate()).thenReturn(createMockCreateKeysAndCertificateResponse());
+        when(mockIotIdentityHelper.registerThing(eq(MOCK_CERTIFICATE_OWNERSHIP_TOKEN), eq(MOCK_PROV_TEMPLATE_NAME),
+                any())).thenReturn(createMockRegisterThingResponse());
+
+        ProvisionConfiguration provisionConfiguration =
+                fleetProvisioningByClaimPlugin.updateIdentityConfiguration(provisionContext);
+
+        ProvisionConfiguration.SystemConfiguration systemConfiguration =
+                provisionConfiguration.getSystemConfiguration();
+
+        assertEquals(Paths.get(rootDir.toString(), DEVICE_CERTIFICATE_PATH_RELATIVE_TO_ROOT).normalize().toString(),
+                systemConfiguration.getCertificateFilePath());
+        assertTrue(Files.exists(Paths.get(systemConfiguration.getCertificateFilePath())));
+
+        assertEquals(Paths.get(rootDir.toString(), PRIVATE_KEY_PATH_RELATIVE_TO_ROOT).normalize().toString(),
+                systemConfiguration.getPrivateKeyPath());
+        assertTrue(Files.exists(Paths.get(systemConfiguration.getPrivateKeyPath())));
+    }
+
+    @SuppressWarnings("PMD.LooseCoupling")
     @Test
     public void GIVEN_optional_parameters_passed_to_plugin_WHEN_plugin_called_THEN_expected_methods_invoked() throws RetryableProvisioningException, InterruptedException {
         Map<String, Object> parameterMap = createRequiredParameterMap();
