@@ -152,7 +152,7 @@ public class FleetProvisioningByClaimPlugin implements DeviceIdentityInterface {
             IotIdentityHelper iotIdentityHelper = iotIdentityHelperFactory.getInstance(connection);
 
             String certificateOwnershipToken = null;
-            if (csrPath == null) {
+            if (csrPath == null || Utils.isEmpty(csrPath)) {
                 CreateKeysAndCertificateResponse response;
                 response = FutureExceptionHandler.getFutureAfterCompletion(iotIdentityHelper.createKeysAndCertificate(),
                         "Caught exception during PublishCreateKeysAndCertificate");
@@ -161,7 +161,13 @@ public class FleetProvisioningByClaimPlugin implements DeviceIdentityInterface {
                 certificateOwnershipToken = response.certificateOwnershipToken;
             } else {
                 Path csrFile = Paths.get(csrPath);
-                String csr = new String(Files.readAllBytes(csrFile), StandardCharsets.UTF_8);
+                String csr;
+                try {
+                    csr = new String(Files.readAllBytes(csrFile), StandardCharsets.UTF_8);
+                } catch (IOException | SecurityException ex) {
+                    logger.atError().setCause(ex).log("Caught exception while reading the CSR file");
+                    throw new RuntimeException(ex);
+                }
                 CreateCertificateFromCsrResponse response;
                 response = FutureExceptionHandler.getFutureAfterCompletion(
                         iotIdentityHelper.createCertificateFromCsr(csr),
@@ -188,9 +194,6 @@ public class FleetProvisioningByClaimPlugin implements DeviceIdentityInterface {
         } catch (CrtRuntimeException | InterruptedException ex) {
             logger.atError().setCause(ex).log("Exception encountered while getting device identity information");
             throw ex;
-        } catch (IOException ex) {
-            logger.atError().setCause(ex).log("Caught exception while reading the CSR file");
-            throw new RuntimeException(ex);
         } finally {
             proxyTlsContext.close();
         }
