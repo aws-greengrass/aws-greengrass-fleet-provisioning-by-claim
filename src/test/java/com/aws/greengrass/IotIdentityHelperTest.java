@@ -15,6 +15,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import software.amazon.awssdk.crt.mqtt.QualityOfService;
 import software.amazon.awssdk.iot.iotidentity.IotIdentityClient;
 import software.amazon.awssdk.iot.iotidentity.model.CreateKeysAndCertificateResponse;
+import software.amazon.awssdk.iot.iotidentity.model.CreateCertificateFromCsrResponse;
 import software.amazon.awssdk.iot.iotidentity.model.RegisterThingRequest;
 import software.amazon.awssdk.iot.iotidentity.model.RegisterThingResponse;
 
@@ -38,6 +39,7 @@ public class IotIdentityHelperTest {
     private static final String MOCK_PRIVATE_KEY = "MOCK_PRIVATE_KEY";
     private static final String MOCK_TEMPLATE_NAME = "MOCK_TEMPLATE_NAME";
     private static final String MOCK_THING_NAME = "MOCK_THING_NAME";
+    private static final String MOCK_CSR_CERTIFICATE = "MOCK_CSR_CERTIFICATE";
 
     private IotIdentityHelper iotIdentityHelper;
 
@@ -72,6 +74,32 @@ public class IotIdentityHelperTest {
         acceptedConsumer.accept(createMockCreateKeysAndCertificateResponse());
         CreateKeysAndCertificateResponse returnedResponse = response.get();
         assertEquals(MOCK_PRIVATE_KEY, returnedResponse.privateKey);
+        assertEquals(MOCK_CERTIFICATE_ID, returnedResponse.certificateId);
+        assertEquals(MOCK_CERTIFICATE_OWNERSHIP_TOKEN, returnedResponse.certificateOwnershipToken);
+        assertEquals(MOCK_CERTIFICATE_PEM, returnedResponse.certificatePem);
+    }
+
+    @Test
+    public void GIVEN_create_certificate_from_csr_method_invoked_WHEN_api_successful_THEN_expected_response_retuned() throws Exception {
+        when(iotIdentityClient.SubscribeToCreateCertificateFromCsrAccepted(any(), any(), any()))
+                .thenReturn(CompletableFuture.completedFuture(0));
+        when(iotIdentityClient.SubscribeToCreateCertificateFromCsrRejected(any(), any(), any()))
+                .thenReturn(CompletableFuture.completedFuture(0));
+        when(iotIdentityClient.PublishCreateCertificateFromCsr(any(), eq(QualityOfService.AT_LEAST_ONCE)))
+                .thenReturn(CompletableFuture.completedFuture(0));
+        Future<CreateCertificateFromCsrResponse> response =
+                iotIdentityHelper.createCertificateFromCsr(MOCK_CSR_CERTIFICATE);
+
+        ArgumentCaptor<Consumer> consumerArgumentCaptor = ArgumentCaptor.forClass(Consumer.class);
+        verify(iotIdentityClient).SubscribeToCreateCertificateFromCsrAccepted(any(),
+                eq(QualityOfService.AT_LEAST_ONCE), consumerArgumentCaptor.capture());
+        verify(iotIdentityClient).SubscribeToCreateCertificateFromCsrRejected(any(),
+                eq(QualityOfService.AT_LEAST_ONCE), any());
+        verify(iotIdentityClient).PublishCreateCertificateFromCsr(any(),
+                eq(QualityOfService.AT_LEAST_ONCE));
+        Consumer acceptedConsumer = consumerArgumentCaptor.getValue();
+        acceptedConsumer.accept(createMockCreateCertificateFromCsrResponse());
+        CreateCertificateFromCsrResponse returnedResponse = response.get();
         assertEquals(MOCK_CERTIFICATE_ID, returnedResponse.certificateId);
         assertEquals(MOCK_CERTIFICATE_OWNERSHIP_TOKEN, returnedResponse.certificateOwnershipToken);
         assertEquals(MOCK_CERTIFICATE_PEM, returnedResponse.certificatePem);
@@ -121,6 +149,14 @@ public class IotIdentityHelperTest {
         mock.certificateOwnershipToken = MOCK_CERTIFICATE_OWNERSHIP_TOKEN;
         mock.certificatePem = MOCK_CERTIFICATE_PEM;
         mock.privateKey = MOCK_PRIVATE_KEY;
+        return mock;
+    }
+
+    private CreateCertificateFromCsrResponse createMockCreateCertificateFromCsrResponse() {
+        CreateCertificateFromCsrResponse mock = new CreateCertificateFromCsrResponse();
+        mock.certificateId = MOCK_CERTIFICATE_ID;
+        mock.certificateOwnershipToken = MOCK_CERTIFICATE_OWNERSHIP_TOKEN;
+        mock.certificatePem = MOCK_CERTIFICATE_PEM;
         return mock;
     }
 
