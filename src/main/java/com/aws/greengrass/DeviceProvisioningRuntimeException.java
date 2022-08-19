@@ -6,6 +6,8 @@
 package com.aws.greengrass;
 
 public class DeviceProvisioningRuntimeException extends RuntimeException {
+    static final long serialVersionUID = -7034897190745766939L;
+
     public DeviceProvisioningRuntimeException(String message) {
         super(message);
     }

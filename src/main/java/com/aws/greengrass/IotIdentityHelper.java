@@ -71,7 +71,8 @@ public class IotIdentityHelper {
                 iotIdentityClient.SubscribeToCreateKeysAndCertificateAccepted(
                 createKeysAndCertificateSubscriptionRequest,
                 QualityOfService.AT_LEAST_ONCE, createFuture::complete);
-        FutureExceptionHandler.getFutureAfterCompletion(keysSubscribedAccepted, timeout);
+        FutureExceptionHandler.getFutureAfterCompletion(keysSubscribedAccepted, timeout,
+                "Failed to subscribe to create keys and certificate accepted topic");
 
         logger.atInfo().log("Subscribed to CreateKeysAndCertificateAccepted");
 
@@ -83,13 +84,15 @@ public class IotIdentityHelper {
                         RuntimeException e = new RuntimeException(errorResponse.errorMessage);
                         createFuture.completeExceptionally(e);
                     });
-        FutureExceptionHandler.getFutureAfterCompletion(keysSubscribedRejected, timeout);
+        FutureExceptionHandler.getFutureAfterCompletion(keysSubscribedRejected, timeout,
+                "Failed to subscribe to create keys and certificate rejected topic");
         logger.atInfo().log("Subscribed to CreateKeysAndCertificateRejected");
 
         CompletableFuture<Integer> publishKeys = iotIdentityClient.PublishCreateKeysAndCertificate(
                 new CreateKeysAndCertificateRequest(),
                 QualityOfService.AT_LEAST_ONCE);
-        FutureExceptionHandler.getFutureAfterCompletion(publishKeys);
+        FutureExceptionHandler.getFutureAfterCompletion(publishKeys,
+                "Failed to publish to create keys and certificate topic");
 
         logger.atInfo().log("Published to CreateKeysAndCertificate");
         return createFuture;
@@ -128,9 +131,9 @@ public class IotIdentityHelper {
         CompletableFuture<Integer> csrSubscribedAccepted =
                 iotIdentityClient.SubscribeToCreateCertificateFromCsrAccepted(
                 createCertificateFromCsrSubscriptionRequest,
-                QualityOfService.AT_LEAST_ONCE,
-                (response) -> createFuture.complete(response));
-        FutureExceptionHandler.getFutureAfterCompletion(csrSubscribedAccepted, timeout);
+                QualityOfService.AT_LEAST_ONCE, createFuture::complete);
+        FutureExceptionHandler.getFutureAfterCompletion(csrSubscribedAccepted, timeout,
+                "Failed to subscribe to create certificate from csr accepted topic");
 
         logger.atInfo().log("Subscribed to CreatedCertificateFromCsrAccepted");
 
@@ -142,7 +145,8 @@ public class IotIdentityHelper {
                         RuntimeException e = new RuntimeException(errorResponse.errorMessage);
                         createFuture.completeExceptionally(e);
                     });
-        FutureExceptionHandler.getFutureAfterCompletion(csrSubscribedRejected, timeout);
+        FutureExceptionHandler.getFutureAfterCompletion(csrSubscribedRejected, timeout,
+                "Failed to subscribe to create certificate from csr rejected topic");
         logger.atInfo().log("Subscribed to CreateCertificateFromCsrRejected");
         CreateCertificateFromCsrRequest createCertificateFromCsrRequest = new CreateCertificateFromCsrRequest();
         createCertificateFromCsrRequest.certificateSigningRequest = certificateSigningRequest;
@@ -150,7 +154,8 @@ public class IotIdentityHelper {
         CompletableFuture<Integer> publishCsr = iotIdentityClient.PublishCreateCertificateFromCsr(
                 createCertificateFromCsrRequest,
                 QualityOfService.AT_LEAST_ONCE);
-        FutureExceptionHandler.getFutureAfterCompletion(publishCsr);
+        FutureExceptionHandler.getFutureAfterCompletion(publishCsr,
+                "Failed to publish to create certificate from csr topic");
 
         logger.atInfo().log("Published to CreateCertificateFromCsr");
         return createFuture;
@@ -197,7 +202,8 @@ public class IotIdentityHelper {
                     logger.atInfo().log("Received register thing response");
                     registerFuture.complete(response);
                 }, registerFuture::completeExceptionally);
-        FutureExceptionHandler.getFutureAfterCompletion(subscribedRegisterAccepted, iotTimeout);
+        FutureExceptionHandler.getFutureAfterCompletion(subscribedRegisterAccepted, iotTimeout,
+                "Failed to subscribe to register thing accepted topic");
         logger.atInfo().log("Subscribed to SubscribeToRegisterThingAccepted");
 
         CompletableFuture<Integer> subscribedRegisterRejected = iotIdentityClient.SubscribeToRegisterThingRejected(
@@ -207,7 +213,8 @@ public class IotIdentityHelper {
                     RuntimeException e = new RuntimeException(errorResponse.errorMessage);
                     registerFuture.completeExceptionally(e);
                 }, registerFuture::completeExceptionally);
-        FutureExceptionHandler.getFutureAfterCompletion(subscribedRegisterRejected, iotTimeout);
+        FutureExceptionHandler.getFutureAfterCompletion(subscribedRegisterRejected, iotTimeout,
+                "Failed to subscribe to register thing rejected topic");
         logger.atInfo().log("Subscribed to SubscribeToRegisterThingRejected");
 
         RegisterThingRequest registerThingRequest = new RegisterThingRequest();

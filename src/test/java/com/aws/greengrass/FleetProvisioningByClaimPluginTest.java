@@ -121,7 +121,7 @@ public class FleetProvisioningByClaimPluginTest {
     public void GIVEN_required_params_not_provided_WHEN_plugin_invoked_THEN_validation_fails() {
         Map<String, Object> parameterMap = new HashMap<>();
         // empty map
-        Exception e = assertThrows(RuntimeException.class,
+        Exception e = assertThrows(IllegalArgumentException.class,
                 () -> fleetProvisioningByClaimPlugin.updateIdentityConfiguration(new ProvisionContext(DEFAULT_PROVISIONING_POLICY, parameterMap)));
         String errorMessage = e.getMessage();
         assertTrue(errorMessage.contains(String.format(MISSING_REQUIRED_PARAMETERS_ERROR_FORMAT,
@@ -262,12 +262,12 @@ public class FleetProvisioningByClaimPluginTest {
     @Test
     public void GIVEN_invalid_endpoint_passed_to_plugin_WHEN_plugin_called_THEN_runtime_exception() throws RetryableProvisioningException, InterruptedException {
         Map<String, Object> parameterMap = createRequiredParameterMap();
-        CompletableFuture completableFuture = new CompletableFuture();
+        CompletableFuture<Boolean> completableFuture = new CompletableFuture<>();
         completableFuture.completeExceptionally(new MqttException("Invalid Exception"));
         when(mockConnection.connect()).thenReturn(completableFuture);
         ProvisionContext provisionContext = new ProvisionContext(DEFAULT_PROVISIONING_POLICY, parameterMap);
 
-        assertThrows(RuntimeException.class,
+        assertThrows(DeviceProvisioningRuntimeException.class,
                () -> fleetProvisioningByClaimPlugin.updateIdentityConfiguration(provisionContext));
         verify(mockIotIdentityHelper, times(0)).createKeysAndCertificate();
         verify(mockIotIdentityHelper, times(0)).registerThing(eq(MOCK_CERTIFICATE_OWNERSHIP_TOKEN),

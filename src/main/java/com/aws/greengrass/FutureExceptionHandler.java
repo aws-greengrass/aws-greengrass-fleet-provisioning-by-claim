@@ -34,7 +34,7 @@ public final class FutureExceptionHandler {
      * @throws InterruptedException {@link InterruptedException}
      * @throws RetryableProvisioningException {@link RetryableProvisioningException}
      */
-    public static <T> T getFutureAfterCompletion(Future<T> future, String... errorMessage)
+    public static <T> T getFutureAfterCompletion(Future<T> future, String errorMessage)
             throws InterruptedException, RetryableProvisioningException {
         return getFutureAfterCompletion(future, AWS_IOT_DEFAULT_TIMEOUT_SECONDS, errorMessage);
     }
@@ -52,7 +52,7 @@ public final class FutureExceptionHandler {
      * @throws RuntimeException when any other error happens
      */
     @SuppressWarnings("PMD.PreserveStackTrace")
-    public static <T> T getFutureAfterCompletion(Future<T> future, int timeout, String... errorMessage)
+    public static <T> T getFutureAfterCompletion(Future<T> future, int timeout, String errorMessage)
             throws InterruptedException, RetryableProvisioningException {
         try {
             return future.get(timeout, TimeUnit.SECONDS);
