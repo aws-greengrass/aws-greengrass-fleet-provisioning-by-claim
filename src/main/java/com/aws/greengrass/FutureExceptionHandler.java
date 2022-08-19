@@ -34,7 +34,7 @@ public final class FutureExceptionHandler {
      * @throws InterruptedException {@link InterruptedException}
      * @throws RetryableProvisioningException {@link RetryableProvisioningException}
      */
-    public static <T> T getFutureAfterCompletion(Future<T> future, String... errorMessage)
+    public static <T> T getFutureAfterCompletion(Future<T> future, String errorMessage)
             throws InterruptedException, RetryableProvisioningException {
         return getFutureAfterCompletion(future, AWS_IOT_DEFAULT_TIMEOUT_SECONDS, errorMessage);
     }
@@ -48,10 +48,11 @@ public final class FutureExceptionHandler {
      * @return The result of the future
      * @throws InterruptedException when thread is interrupted
      * @throws RetryableProvisioningException when retryable error happens like timeout
+     * @throws DeviceProvisioningRuntimeException when any other error happens
      * @throws RuntimeException when any other error happens
      */
     @SuppressWarnings("PMD.PreserveStackTrace")
-    public static <T> T getFutureAfterCompletion(Future<T> future, int timeout, String... errorMessage)
+    public static <T> T getFutureAfterCompletion(Future<T> future, int timeout, String errorMessage)
             throws InterruptedException, RetryableProvisioningException {
         try {
             return future.get(timeout, TimeUnit.SECONDS);
@@ -65,7 +66,7 @@ public final class FutureExceptionHandler {
                 throw new RetryableProvisioningException(e1);
             } catch (ExecutionException e1) {
                 logger.atError().setCause(e1).log(errorMessage);
-                throw new RuntimeException(e1.getCause());
+                throw new DeviceProvisioningRuntimeException(e1.getCause());
             }
         } catch (TimeoutException e1) {
             logger.atWarn().setCause(e1).kv("retryable", true).log(errorMessage);

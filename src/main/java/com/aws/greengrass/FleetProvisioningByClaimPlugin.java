@@ -166,7 +166,8 @@ public class FleetProvisioningByClaimPlugin implements DeviceIdentityInterface {
                     csr = new String(Files.readAllBytes(csrFile), StandardCharsets.UTF_8);
                 } catch (IOException | SecurityException ex) {
                     logger.atError().setCause(ex).log("Caught exception while reading the CSR file");
-                    throw new RuntimeException(ex);
+                    throw new DeviceProvisioningRuntimeException(
+                            "Failed to read CSR file " + csrFile.toAbsolutePath(), ex);
                 }
                 CreateCertificateFromCsrResponse response;
                 response = FutureExceptionHandler.getFutureAfterCompletion(
@@ -217,7 +218,7 @@ public class FleetProvisioningByClaimPlugin implements DeviceIdentityInterface {
         checkRequiredParameterPresent(parameterMap, errors, ROOT_PATH_PARAMETER_NAME);
 
         if (!errors.isEmpty()) {
-            throw new RuntimeException(errors.toString());
+            throw new IllegalArgumentException(errors.toString());
         }
     }
 
@@ -283,7 +284,7 @@ public class FleetProvisioningByClaimPlugin implements DeviceIdentityInterface {
             Platform.getInstance().setPermissions(FileSystemPermission.builder().ownerRead(true).build(), keyPath);
         } catch (IOException e) {
             logger.atError().log("Caught exception while writing certificate and private key to file");
-            throw new RuntimeException(e);
+            throw new DeviceProvisioningRuntimeException("Failed to write certificate and private key", e);
         }
     }
 
@@ -296,7 +297,7 @@ public class FleetProvisioningByClaimPlugin implements DeviceIdentityInterface {
                     .ownerRead(true).ownerWrite(true).ownerExecute(true).build(), certPath);
         } catch (IOException e) {
             logger.atError().log("Caught exception while writing certificate to file", e);
-            throw new RuntimeException(e);
+            throw new DeviceProvisioningRuntimeException("Failed to write certificate", e);
         }
     }
 }
