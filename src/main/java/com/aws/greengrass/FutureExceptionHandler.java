@@ -48,6 +48,7 @@ public final class FutureExceptionHandler {
      * @return The result of the future
      * @throws InterruptedException when thread is interrupted
      * @throws RetryableProvisioningException when retryable error happens like timeout
+     * @throws DeviceProvisioningRuntimeException when any other error happens
      * @throws RuntimeException when any other error happens
      */
     @SuppressWarnings("PMD.PreserveStackTrace")
@@ -65,7 +66,7 @@ public final class FutureExceptionHandler {
                 throw new RetryableProvisioningException(e1);
             } catch (ExecutionException e1) {
                 logger.atError().setCause(e1).log(errorMessage);
-                throw new RuntimeException(e1.getCause());
+                throw new DeviceProvisioningRuntimeException(e1.getCause());
             }
         } catch (TimeoutException e1) {
             logger.atWarn().setCause(e1).kv("retryable", true).log(errorMessage);
