@@ -274,14 +274,16 @@ public class FleetProvisioningByClaimPlugin implements DeviceIdentityInterface {
                 Files.createFile(certPath);
             }
             Files.write(certPath, response.certificatePem.getBytes(StandardCharsets.UTF_8));
-            Platform.getInstance().setPermissions(FileSystemPermission.builder().ownerRead(true).build(), certPath);
+            Platform.getInstance().setPermissions(FileSystemPermission.builder().ownerRead(true)
+                .ownerWrite(true).build(), certPath);
 
             Path keyPath = Paths.get(rootPath, PRIVATE_KEY_PATH_RELATIVE_TO_ROOT);
             if (Files.notExists(keyPath)) {
                 Files.createFile(keyPath);
             }
             Files.write(keyPath, response.privateKey.getBytes(StandardCharsets.UTF_8));
-            Platform.getInstance().setPermissions(FileSystemPermission.builder().ownerRead(true).build(), keyPath);
+            Platform.getInstance().setPermissions(FileSystemPermission.builder().ownerRead(true)
+                .ownerWrite(true).build(), keyPath);
         } catch (IOException e) {
             logger.atError().log("Caught exception while writing certificate and private key to file");
             throw new DeviceProvisioningRuntimeException("Failed to write certificate and private key", e);
@@ -293,8 +295,8 @@ public class FleetProvisioningByClaimPlugin implements DeviceIdentityInterface {
             Path certPath = Paths.get(rootPath, DEVICE_CERTIFICATE_PATH_RELATIVE_TO_ROOT);
             Files.createFile(certPath);
             Files.write(certPath, response.certificatePem.getBytes(StandardCharsets.UTF_8));
-            Platform.getInstance().setPermissions(FileSystemPermission.builder()
-                    .ownerRead(true).ownerWrite(true).ownerExecute(true).build(), certPath);
+            Platform.getInstance().setPermissions(FileSystemPermission.builder().ownerRead(true)
+                .ownerWrite(true).build(), certPath);
         } catch (IOException e) {
             logger.atError().log("Caught exception while writing certificate to file", e);
             throw new DeviceProvisioningRuntimeException("Failed to write certificate", e);
