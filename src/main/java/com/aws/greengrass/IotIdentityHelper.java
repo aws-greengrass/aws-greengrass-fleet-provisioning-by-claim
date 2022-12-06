@@ -199,7 +199,7 @@ public class IotIdentityHelper {
                 registerThingSubscriptionRequest,
                 QualityOfService.AT_LEAST_ONCE,
                 (response) -> {
-                    logger.atInfo().log("Received register thing response");
+                    logger.atInfo().log("Received register thing response for thing name {}", response.thingName);
                     registerFuture.complete(response);
                 }, registerFuture::completeExceptionally);
         FutureExceptionHandler.getFutureAfterCompletion(subscribedRegisterAccepted, iotTimeout,
