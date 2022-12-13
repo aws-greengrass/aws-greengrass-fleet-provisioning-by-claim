@@ -33,6 +33,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -68,6 +69,7 @@ public class FleetProvisioningByClaimPlugin implements DeviceIdentityInterface {
     static final String PROXY_USERNAME_PARAMETER_NAME = "proxyUsername";
     static final String PROXY_PASSWORD_PARAMETER_NAME = "proxyPassword";
     static final String CSR_PATH_PARAMETER_NAME = "csrPath";
+    static final String CSR_PRIVATE_KEY_PATH_PARAMETER_NAME = "csrPrivateKeyPath";
 
     static final String MISSING_REQUIRED_PARAMETERS_ERROR_FORMAT =
             "Required parameter %s missing for " + PLUGIN_NAME;
@@ -112,6 +114,8 @@ public class FleetProvisioningByClaimPlugin implements DeviceIdentityInterface {
         }
         String csrPath = parameterMap.get(CSR_PATH_PARAMETER_NAME) == null ? null
                 : parameterMap.get(CSR_PATH_PARAMETER_NAME).toString();
+        String csrPrivateKeyPath = parameterMap.get(CSR_PRIVATE_KEY_PATH_PARAMETER_NAME) == null ? null
+                : parameterMap.get(CSR_PRIVATE_KEY_PATH_PARAMETER_NAME).toString();
         String rootCaPath = parameterMap.get(ROOT_CA_PATH_PARAMETER_NAME).toString();
         String templateName = parameterMap.get(PROVISIONING_TEMPLATE_PARAMETER_NAME).toString();
         String clientId = parameterMap.get(DEVICE_ID_PARAMETER_NAME) == null ? UUID.randomUUID().toString()
@@ -175,6 +179,7 @@ public class FleetProvisioningByClaimPlugin implements DeviceIdentityInterface {
                         "Caught exception during PublishCreateCertificateFromCsr");
 
                 writeCertificateToPath(response, parameterMap.get(ROOT_PATH_PARAMETER_NAME).toString());
+                copyPrivateKey(parameterMap.get(ROOT_PATH_PARAMETER_NAME).toString(), csrPrivateKeyPath);
                 certificateOwnershipToken = response.certificateOwnershipToken;
             }
 
@@ -216,6 +221,10 @@ public class FleetProvisioningByClaimPlugin implements DeviceIdentityInterface {
         checkRequiredParameterPresent(parameterMap, errors, IOT_DATA_ENDPOINT_PARAMETER_NAME);
         checkRequiredParameterPresent(parameterMap, errors, PROVISIONING_TEMPLATE_PARAMETER_NAME);
         checkRequiredParameterPresent(parameterMap, errors, ROOT_PATH_PARAMETER_NAME);
+        if (!(parameterMap.get(CSR_PATH_PARAMETER_NAME) == null
+                || Utils.isEmpty(parameterMap.get(CSR_PATH_PARAMETER_NAME).toString()))) {
+            checkRequiredParameterPresent(parameterMap, errors, CSR_PRIVATE_KEY_PATH_PARAMETER_NAME);
+        }
 
         if (!errors.isEmpty()) {
             throw new IllegalArgumentException(errors.toString());
@@ -264,6 +273,21 @@ public class FleetProvisioningByClaimPlugin implements DeviceIdentityInterface {
                 || Utils.isEmpty(parameterMap.get(parameterName).toString())) {
             errors.add(String.format(MISSING_REQUIRED_PARAMETERS_ERROR_FORMAT,
                     parameterName));
+        }
+    }
+
+    private void copyPrivateKey(String rootPath, String privateKeyPath) {
+        Path permPrivateKeyPath = Paths.get(rootPath, PRIVATE_KEY_PATH_RELATIVE_TO_ROOT);
+        try {
+            if (Files.notExists(permPrivateKeyPath)) {
+                Files.createFile(permPrivateKeyPath);
+            }
+            Files.copy(Paths.get(privateKeyPath), permPrivateKeyPath, StandardCopyOption.REPLACE_EXISTING);
+            Platform.getInstance().setPermissions(FileSystemPermission.builder().ownerRead(true)
+                    .ownerWrite(true).build(), permPrivateKeyPath);
+        } catch (IOException e) {
+            logger.atError().log("Caught exception while copying private key to root directory");
+            throw new DeviceProvisioningRuntimeException("Failed to copy private key to root directory", e);
         }
     }
 
