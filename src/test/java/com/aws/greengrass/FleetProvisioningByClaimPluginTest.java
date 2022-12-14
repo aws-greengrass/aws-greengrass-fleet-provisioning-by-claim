@@ -23,6 +23,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import software.amazon.awssdk.crt.http.HttpProxyOptions;
 import software.amazon.awssdk.crt.mqtt.MqttClientConnection;
 import software.amazon.awssdk.crt.mqtt.MqttException;
+import software.amazon.awssdk.iot.iotidentity.model.CreateCertificateFromCsrResponse;
 import software.amazon.awssdk.iot.iotidentity.model.CreateKeysAndCertificateResponse;
 import software.amazon.awssdk.iot.iotidentity.model.RegisterThingResponse;
 
@@ -260,6 +261,39 @@ public class FleetProvisioningByClaimPluginTest {
     }
 
     @Test
+    public void GIVEN_csr_parameters_passed_to_plugin_WHEN_plugin_called_THEN_cert_and_private_key_paths_are_correct()
+            throws IOException, RetryableProvisioningException, InterruptedException {
+        Path csrPath = rootDir.resolve("csrPath.csr");
+        Files.createFile(csrPath);
+        Path csrPrivateKeyPath = rootDir.resolve("csrPrivateKeyPath.key");
+        Files.createFile(csrPrivateKeyPath);
+
+        Map<String, Object> parameterMap = createRequiredParameterMap();
+        parameterMap.put("csrPath", csrPath);
+        parameterMap.put("csrPrivateKeyPath", csrPrivateKeyPath);
+
+        ProvisionContext provisionContext = new ProvisionContext(DEFAULT_PROVISIONING_POLICY, parameterMap);
+        when(mockIotIdentityHelper.createCertificateFromCsr(any()))
+                .thenReturn(createMockCreateCertificateFromCsrResponse());
+        when(mockIotIdentityHelper.registerThing(eq(MOCK_CERTIFICATE_OWNERSHIP_TOKEN), eq(MOCK_PROV_TEMPLATE_NAME),
+                any())).thenReturn(createMockRegisterThingResponse());
+
+        ProvisionConfiguration provisionConfiguration =
+                fleetProvisioningByClaimPlugin.updateIdentityConfiguration(provisionContext);
+
+        ProvisionConfiguration.SystemConfiguration systemConfiguration =
+                provisionConfiguration.getSystemConfiguration();
+
+        assertEquals(Paths.get(rootDir.toString(), DEVICE_CERTIFICATE_PATH_RELATIVE_TO_ROOT).normalize().toString(),
+                systemConfiguration.getCertificateFilePath());
+        assertTrue(Files.exists(Paths.get(systemConfiguration.getCertificateFilePath())));
+
+        assertEquals(Paths.get(rootDir.toString(), PRIVATE_KEY_PATH_RELATIVE_TO_ROOT).normalize().toString(),
+                systemConfiguration.getPrivateKeyPath());
+        assertTrue(Files.exists(Paths.get(systemConfiguration.getPrivateKeyPath())));
+    }
+
+    @Test
     public void GIVEN_invalid_endpoint_passed_to_plugin_WHEN_plugin_called_THEN_runtime_exception() throws RetryableProvisioningException, InterruptedException {
         Map<String, Object> parameterMap = createRequiredParameterMap();
         CompletableFuture<Boolean> completableFuture = new CompletableFuture<>();
@@ -320,6 +354,16 @@ public class FleetProvisioningByClaimPluginTest {
         createKeysAndCertificateResponse.certificatePem = MOCK_CERTIFICATE_PEM;
         createKeysAndCertificateResponse.privateKey = MOCK_PRIVATE_KEY;
         mockFuture.complete(createKeysAndCertificateResponse);
+        return mockFuture;
+    }
+
+    private Future<CreateCertificateFromCsrResponse> createMockCreateCertificateFromCsrResponse() {
+        CompletableFuture mockFuture = new CompletableFuture();
+        CreateCertificateFromCsrResponse createCertificateFromCsrResponse = new CreateCertificateFromCsrResponse();
+        createCertificateFromCsrResponse.certificateId = MOCK_CERTIFICATE_ID;
+        createCertificateFromCsrResponse.certificateOwnershipToken = MOCK_CERTIFICATE_OWNERSHIP_TOKEN;
+        createCertificateFromCsrResponse.certificatePem = MOCK_CERTIFICATE_PEM;
+        mockFuture.complete(createCertificateFromCsrResponse);
         return mockFuture;
     }
 
