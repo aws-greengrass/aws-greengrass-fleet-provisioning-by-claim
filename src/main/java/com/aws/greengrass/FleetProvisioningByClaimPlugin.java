@@ -149,9 +149,17 @@ public class FleetProvisioningByClaimPlugin implements DeviceIdentityInterface {
              MqttClientConnection connection = mqttConnectionHelper
                 .getMqttConnection(mqttParameterBuilder.clientBootstrap(clientBootstrap).build())) {
 
-            CompletableFuture<Boolean> connected = connection.connect();
-            FutureExceptionHandler.getFutureAfterCompletion(connected,
-                    "Caught exception while establishing connection to AWS Iot");
+            while (true) {
+                try {
+                    CompletableFuture<Boolean> connected = connection.connect();
+                    FutureExceptionHandler.getFutureAfterCompletion(connected,
+                            "Caught exception while establishing connection to AWS Iot");
+                    break;
+                } catch (RetryableProvisioningException e) {
+                    logger.atInfo().log("Retrying MQTT connect which failed in provisioning plugin");
+                    Thread.sleep(5_000);
+                }
+            }
 
             IotIdentityHelper iotIdentityHelper = iotIdentityHelperFactory.getInstance(connection);
 

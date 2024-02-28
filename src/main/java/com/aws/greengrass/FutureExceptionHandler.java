@@ -51,7 +51,7 @@ public final class FutureExceptionHandler {
      * @throws DeviceProvisioningRuntimeException when any other error happens
      * @throws RuntimeException when any other error happens
      */
-    @SuppressWarnings("PMD.PreserveStackTrace")
+    @SuppressWarnings({"PMD.PreserveStackTrace", "PMD.ExceptionAsFlowControl"})
     public static <T> T getFutureAfterCompletion(Future<T> future, int timeout, String errorMessage)
             throws InterruptedException, RetryableProvisioningException {
         try {
@@ -67,6 +67,9 @@ public final class FutureExceptionHandler {
             } catch (ExecutionException e1) {
                 logger.atError().setCause(e1).log(errorMessage);
                 throw new DeviceProvisioningRuntimeException(e1.getCause());
+            } catch (RetryableProvisioningException e1) {
+                logger.atWarn().setCause(e1).kv("retryable", true).log(errorMessage);
+                throw e1;
             }
         } catch (TimeoutException e1) {
             logger.atWarn().setCause(e1).kv("retryable", true).log(errorMessage);
@@ -74,14 +77,11 @@ public final class FutureExceptionHandler {
         }
     }
 
-    @SuppressWarnings("PMD.CollapsibleIfStatements")
     private static void unwrapExecutionException(ExecutionException e)
-            throws TimeoutException, InterruptedException, ExecutionException {
+            throws TimeoutException, InterruptedException, ExecutionException, RetryableProvisioningException {
         Throwable cause = e.getCause();
         if (cause instanceof MqttException) {
-            if (cause.getMessage() != null && cause.getMessage().contains("operation timed out")) {
-                throw new TimeoutException(cause.getMessage());
-            }
+            throw new RetryableProvisioningException(cause);
         }
         if (cause instanceof TimeoutException) {
             throw (TimeoutException) cause;
