@@ -40,6 +40,7 @@ import java.util.concurrent.Future;
 import static com.aws.greengrass.FleetProvisioningByClaimPlugin.AWS_REGION_PARAMETER_NAME;
 import static com.aws.greengrass.FleetProvisioningByClaimPlugin.CLAIM_CERTIFICATE_PATH_PARAMETER_NAME;
 import static com.aws.greengrass.FleetProvisioningByClaimPlugin.CLAIM_CERTIFICATE_PRIVATE_KEY_PATH_PARAMETER_NAME;
+import static com.aws.greengrass.FleetProvisioningByClaimPlugin.CSR_PATH_PARAMETER_NAME;
 import static com.aws.greengrass.FleetProvisioningByClaimPlugin.DEVICE_CERTIFICATE_PATH_RELATIVE_TO_ROOT;
 import static com.aws.greengrass.FleetProvisioningByClaimPlugin.DEVICE_ID_PARAMETER_NAME;
 import static com.aws.greengrass.FleetProvisioningByClaimPlugin.IOT_CREDENTIAL_ENDPOINT_PARAMETER_NAME;
@@ -49,12 +50,12 @@ import static com.aws.greengrass.FleetProvisioningByClaimPlugin.MISSING_REQUIRED
 import static com.aws.greengrass.FleetProvisioningByClaimPlugin.PRIVATE_KEY_PATH_RELATIVE_TO_ROOT;
 import static com.aws.greengrass.FleetProvisioningByClaimPlugin.PROVISIONING_TEMPLATE_PARAMETER_NAME;
 import static com.aws.greengrass.FleetProvisioningByClaimPlugin.PROXY_URL_PARAMETER_NAME;
-import static com.aws.greengrass.FleetProvisioningByClaimPlugin.CSR_PATH_PARAMETER_NAME;
 import static com.aws.greengrass.FleetProvisioningByClaimPlugin.ROOT_CA_PATH_PARAMETER_NAME;
 import static com.aws.greengrass.FleetProvisioningByClaimPlugin.ROOT_PATH_PARAMETER_NAME;
 import static com.aws.greengrass.FleetProvisioningByClaimPlugin.TEMPLATE_PARAMETERS_PARAMETER_NAME;
 import static com.aws.greengrass.testcommons.testutilities.ExceptionLogProtector.ignoreExceptionOfType;
 import static com.aws.greengrass.testcommons.testutilities.ExceptionLogProtector.ignoreExceptionUltimateCauseOfType;
+import static com.aws.greengrass.testcommons.testutilities.ExceptionLogProtector.ignoreExceptionUltimateCauseWithMessage;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -294,15 +295,20 @@ public class FleetProvisioningByClaimPluginTest {
     }
 
     @Test
-    public void GIVEN_invalid_endpoint_passed_to_plugin_WHEN_plugin_called_THEN_runtime_exception() throws RetryableProvisioningException, InterruptedException {
+    public void GIVEN_mqtt_exception_WHEN_plugin_called_THEN_retries(ExtensionContext context) throws RetryableProvisioningException,
+            InterruptedException {
+        ignoreExceptionUltimateCauseWithMessage(context, "Invalid Exception");
         Map<String, Object> parameterMap = createRequiredParameterMap();
         CompletableFuture<Boolean> completableFuture = new CompletableFuture<>();
         completableFuture.completeExceptionally(new MqttException("Invalid Exception"));
-        when(mockConnection.connect()).thenReturn(completableFuture);
+        CompletableFuture<Boolean> completableFuture2 = new CompletableFuture<>();
+        completableFuture2.completeExceptionally(new RuntimeException("Invalid Exception"));
+        when(mockConnection.connect()).thenReturn(completableFuture).thenReturn(completableFuture2);
         ProvisionContext provisionContext = new ProvisionContext(DEFAULT_PROVISIONING_POLICY, parameterMap);
 
         assertThrows(DeviceProvisioningRuntimeException.class,
                () -> fleetProvisioningByClaimPlugin.updateIdentityConfiguration(provisionContext));
+        verify(mockConnection, times(2)).connect();
         verify(mockIotIdentityHelper, times(0)).createKeysAndCertificate();
         verify(mockIotIdentityHelper, times(0)).registerThing(eq(MOCK_CERTIFICATE_OWNERSHIP_TOKEN),
                 eq(MOCK_PROV_TEMPLATE_NAME), any());
