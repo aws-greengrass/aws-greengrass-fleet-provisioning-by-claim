@@ -19,6 +19,8 @@ import software.amazon.awssdk.crt.mqtt.MqttClientConnection;
 import software.amazon.awssdk.crt.mqtt.MqttClientConnectionEvents;
 import software.amazon.awssdk.iot.AwsIotMqttConnectionBuilder;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.net.URI;
 import javax.annotation.Nullable;
 
@@ -58,7 +60,22 @@ public class MqttConnectionHelper {
                 .withConnectionEventCallbacks(callbacks)) {
 
             if (mqttConnectionParameters.getMqttPort() != null) {
-                builder.withPort(mqttConnectionParameters.getMqttPort().shortValue());
+                Class<?> classObj = builder.getClass();
+                try {
+                    Method method = classObj.getDeclaredMethod("withPort", int.class);
+                    method.invoke(classObj, mqttConnectionParameters.getMqttPort());
+                } catch (NoSuchMethodException e) {
+                    try {
+                        Method method = classObj.getDeclaredMethod("withPort", short.class);
+                        method.invoke(classObj, mqttConnectionParameters.getMqttPort().shortValue());
+                    } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException ex) {
+                        logger.atWarn().log("Can not successfully use port: "
+                                + mqttConnectionParameters.getMqttPort().shortValue(), ex);
+                    }
+                } catch (IllegalAccessException | InvocationTargetException e) {
+                    logger.atWarn().log("Can not successfully use port: "
+                            + mqttConnectionParameters.getMqttPort().intValue(), e);
+                }
             }
             if (mqttConnectionParameters.getHttpProxyOptions() != null) {
                 builder.withHttpProxyOptions(mqttConnectionParameters.getHttpProxyOptions());
