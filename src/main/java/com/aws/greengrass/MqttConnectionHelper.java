@@ -63,11 +63,11 @@ public class MqttConnectionHelper {
                 Class<?> classObj = builder.getClass();
                 try {
                     Method method = classObj.getDeclaredMethod("withPort", int.class);
-                    method.invoke(method, mqttConnectionParameters.getMqttPort());
+                    method.invoke(builder, mqttConnectionParameters.getMqttPort());
                 } catch (NoSuchMethodException e) {
                     try {
                         Method method = classObj.getDeclaredMethod("withPort", short.class);
-                        method.invoke(method, mqttConnectionParameters.getMqttPort().shortValue());
+                        method.invoke(builder, mqttConnectionParameters.getMqttPort().shortValue());
                     } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException ex) {
                         logger.atWarn().log("Can not successfully use port: "
                                 + mqttConnectionParameters.getMqttPort().shortValue(), ex);
