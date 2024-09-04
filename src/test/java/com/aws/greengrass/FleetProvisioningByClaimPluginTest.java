@@ -41,13 +41,13 @@ import static com.aws.greengrass.FleetProvisioningByClaimPlugin.AWS_REGION_PARAM
 import static com.aws.greengrass.FleetProvisioningByClaimPlugin.CLAIM_CERTIFICATE_PATH_PARAMETER_NAME;
 import static com.aws.greengrass.FleetProvisioningByClaimPlugin.CLAIM_CERTIFICATE_PRIVATE_KEY_PATH_PARAMETER_NAME;
 import static com.aws.greengrass.FleetProvisioningByClaimPlugin.CSR_PATH_PARAMETER_NAME;
-import static com.aws.greengrass.FleetProvisioningByClaimPlugin.DEVICE_CERTIFICATE_PATH_RELATIVE_TO_ROOT;
+import static com.aws.greengrass.FleetProvisioningByClaimPlugin.DEFAULT_CERT_FILE;
 import static com.aws.greengrass.FleetProvisioningByClaimPlugin.DEVICE_ID_PARAMETER_NAME;
 import static com.aws.greengrass.FleetProvisioningByClaimPlugin.IOT_CREDENTIAL_ENDPOINT_PARAMETER_NAME;
 import static com.aws.greengrass.FleetProvisioningByClaimPlugin.IOT_DATA_ENDPOINT_PARAMETER_NAME;
 import static com.aws.greengrass.FleetProvisioningByClaimPlugin.IOT_ROLE_ALIAS_PARAMETER_NAME;
 import static com.aws.greengrass.FleetProvisioningByClaimPlugin.MISSING_REQUIRED_PARAMETERS_ERROR_FORMAT;
-import static com.aws.greengrass.FleetProvisioningByClaimPlugin.PRIVATE_KEY_PATH_RELATIVE_TO_ROOT;
+import static com.aws.greengrass.FleetProvisioningByClaimPlugin.DEFAULT_KEY_FILE;
 import static com.aws.greengrass.FleetProvisioningByClaimPlugin.PROVISIONING_TEMPLATE_PARAMETER_NAME;
 import static com.aws.greengrass.FleetProvisioningByClaimPlugin.PROXY_URL_PARAMETER_NAME;
 import static com.aws.greengrass.FleetProvisioningByClaimPlugin.ROOT_CA_PATH_PARAMETER_NAME;
@@ -171,9 +171,46 @@ public class FleetProvisioningByClaimPluginTest {
 
         ProvisionConfiguration.SystemConfiguration systemConfiguration =
                 provisionConfiguration.getSystemConfiguration();
-        assertEquals(Paths.get(rootDir.toString(), DEVICE_CERTIFICATE_PATH_RELATIVE_TO_ROOT).normalize().toString(),
+        assertEquals(Paths.get(rootDir.toString(), DEFAULT_CERT_FILE).normalize().toString(),
                 systemConfiguration.getCertificateFilePath());
-        assertEquals(Paths.get(rootDir.toString(), PRIVATE_KEY_PATH_RELATIVE_TO_ROOT).normalize().toString(),
+        assertEquals(Paths.get(rootDir.toString(), DEFAULT_KEY_FILE).normalize().toString(),
+                systemConfiguration.getPrivateKeyPath());
+
+        assertEquals(MOCK_THING_NAME, systemConfiguration.getThingName());
+        assertEquals(rootCAPath.toString(), systemConfiguration.getRootCAPath());
+
+        ProvisionConfiguration.NucleusConfiguration nucleusConfiguration =
+                provisionConfiguration.getNucleusConfiguration();
+        assertEquals(MOCK_IOT_DATA_ENDPOINT, nucleusConfiguration.getIotDataEndpoint());
+    }
+
+    @Test
+    public void GIVEN_fleet_provisioning_with_custom_cert_and_key_path_WHEN_plugin_called_THEN_provision_configuration_created() throws RetryableProvisioningException, InterruptedException {
+        Path certPath = rootDir.resolve("certsAndKeys").resolve("cert.cert");
+        Path keyPath = rootDir.resolve("certsAndKeys").resolve("key.key");
+
+        Map<String, Object> parameterMap = createRequiredParameterMap();
+        // override cert and key paths
+        parameterMap.put("certPath", certPath.toString());
+        parameterMap.put("keyPath", keyPath.toString());
+
+        ProvisionContext provisionContext = new ProvisionContext(DEFAULT_PROVISIONING_POLICY, parameterMap);
+        when(mockIotIdentityHelper.createKeysAndCertificate()).thenReturn(createMockCreateKeysAndCertificateResponse());
+        when(mockIotIdentityHelper.registerThing(eq(MOCK_CERTIFICATE_OWNERSHIP_TOKEN), eq(MOCK_PROV_TEMPLATE_NAME),
+                any())).thenReturn(createMockRegisterThingResponse());
+
+        ProvisionConfiguration provisionConfiguration =
+                fleetProvisioningByClaimPlugin.updateIdentityConfiguration(provisionContext);
+
+        verify(mockIotIdentityHelper).createKeysAndCertificate();
+        verify(mockIotIdentityHelper).registerThing(eq(MOCK_CERTIFICATE_OWNERSHIP_TOKEN),
+                eq(MOCK_PROV_TEMPLATE_NAME), any());
+
+        ProvisionConfiguration.SystemConfiguration systemConfiguration =
+                provisionConfiguration.getSystemConfiguration();
+        assertEquals(certPath.normalize().toString(),
+                systemConfiguration.getCertificateFilePath());
+        assertEquals(keyPath.normalize().toString(),
                 systemConfiguration.getPrivateKeyPath());
 
         assertEquals(MOCK_THING_NAME, systemConfiguration.getThingName());
@@ -211,11 +248,11 @@ public class FleetProvisioningByClaimPluginTest {
         ProvisionConfiguration.SystemConfiguration systemConfiguration =
                 provisionConfiguration.getSystemConfiguration();
 
-        assertEquals(Paths.get(rootDir.toString(), DEVICE_CERTIFICATE_PATH_RELATIVE_TO_ROOT).normalize().toString(),
+        assertEquals(Paths.get(rootDir.toString(), DEFAULT_CERT_FILE).normalize().toString(),
                 systemConfiguration.getCertificateFilePath());
         assertTrue(Files.exists(Paths.get(systemConfiguration.getCertificateFilePath())));
 
-        assertEquals(Paths.get(rootDir.toString(), PRIVATE_KEY_PATH_RELATIVE_TO_ROOT).normalize().toString(),
+        assertEquals(Paths.get(rootDir.toString(), DEFAULT_KEY_FILE).normalize().toString(),
                 systemConfiguration.getPrivateKeyPath());
         assertTrue(Files.exists(Paths.get(systemConfiguration.getPrivateKeyPath())));
     }
@@ -285,11 +322,11 @@ public class FleetProvisioningByClaimPluginTest {
         ProvisionConfiguration.SystemConfiguration systemConfiguration =
                 provisionConfiguration.getSystemConfiguration();
 
-        assertEquals(Paths.get(rootDir.toString(), DEVICE_CERTIFICATE_PATH_RELATIVE_TO_ROOT).normalize().toString(),
+        assertEquals(Paths.get(rootDir.toString(), DEFAULT_CERT_FILE).normalize().toString(),
                 systemConfiguration.getCertificateFilePath());
         assertTrue(Files.exists(Paths.get(systemConfiguration.getCertificateFilePath())));
 
-        assertEquals(Paths.get(rootDir.toString(), PRIVATE_KEY_PATH_RELATIVE_TO_ROOT).normalize().toString(),
+        assertEquals(Paths.get(rootDir.toString(), DEFAULT_KEY_FILE).normalize().toString(),
                 systemConfiguration.getPrivateKeyPath());
         assertTrue(Files.exists(Paths.get(systemConfiguration.getPrivateKeyPath())));
     }

@@ -27,6 +27,8 @@ This plugin takes following parameters
 
 ### Optional
 - **csrPath**: CSR file to be used for creating the device certificate from a CSR
+- **certPath**: Override the location where the device certificate is stored locally. Defaults to `**rootPath**/thingCert.crt`
+- **keyPath**: Override the location where the device private key is stored locally. Defaults to `**rootPath**/privKey.key`.
 - **deviceId**: The device identifier which will be used as client id in the mqtt connection to AWS IoT
 - **templateParameters**: Map<String, String> of parameters which will be passed to provisioning template 
 - **awsRegion**: AWS Region
