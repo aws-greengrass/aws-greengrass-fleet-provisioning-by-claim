@@ -34,7 +34,7 @@ jobs:
           python3 ./.github/scripts/cover2cover.py target/jacoco-report/jacoco.xml src/main/java > target/jacoco-report/cobertura.xml
         if: matrix.os == 'ubuntu-latest'
       - name: Upload Coverage
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: matrix.os == 'ubuntu-latest'
         with:
           name: Coverage Report
@@ -48,7 +48,7 @@ jobs:
           cp target/jacoco-report/cobertura.xml ./pr/jacoco-report/cobertura.xml
         if: github.event_name == 'pull_request' && matrix.os == 'ubuntu-latest'
       - name: Upload files
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: pr
           path: pr/
