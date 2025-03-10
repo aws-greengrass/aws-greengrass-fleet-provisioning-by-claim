@@ -71,8 +71,8 @@ public class FleetProvisioningByClaimPlugin implements DeviceIdentityInterface {
     static final String PROXY_PASSWORD_PARAMETER_NAME = "proxyPassword";
     static final String CSR_PATH_PARAMETER_NAME = "csrPath";
     static final String CSR_PRIVATE_KEY_PATH_PARAMETER_NAME = "csrPrivateKeyPath";
-    static final String CERT_PATH_PARAMETER_NAME = "certPath";
-    static final String KEY_PATH_PARAMETER_NAME = "keyPath";
+    static final String CERT_PATH_PARAMETER_NAME = "certificatePath";
+    static final String KEY_PATH_PARAMETER_NAME = "privateKeyPath";
 
     static final String MISSING_REQUIRED_PARAMETERS_ERROR_FORMAT =
             "Required parameter %s missing for " + PLUGIN_NAME;

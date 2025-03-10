@@ -191,8 +191,8 @@ public class FleetProvisioningByClaimPluginTest {
 
         Map<String, Object> parameterMap = createRequiredParameterMap();
         // override cert and key paths
-        parameterMap.put("certPath", certPath.toString());
-        parameterMap.put("keyPath", keyPath.toString());
+        parameterMap.put("certificatePath", certPath.toString());
+        parameterMap.put("privateKeyPath", keyPath.toString());
 
         ProvisionContext provisionContext = new ProvisionContext(DEFAULT_PROVISIONING_POLICY, parameterMap);
         when(mockIotIdentityHelper.createKeysAndCertificate()).thenReturn(createMockCreateKeysAndCertificateResponse());
