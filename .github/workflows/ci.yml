@@ -40,10 +40,15 @@ jobs:
           name: Coverage Report
           path: target/jacoco-report
       - name: Save PR number
+        env:
+          PR_NR: ${{ github.event.number }}
+          PR_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           mkdir -p ./pr/jacoco-report
-          echo ${{ github.event.number }} > ./pr/NR
-          echo ${{ github.event.pull_request.head.sha }} > ./pr/SHA
+          SANITIZED_NR=$(echo "$PR_NR" | tr -cd '0-9')
+          SANITIZED_SHA=$(echo "$PR_SHA" | tr -cd 'a-fA-F0-9')
+          echo "$SANITIZED_NR" > ./pr/PR_NR
+          echo "$SANITIZED_SHA" > ./pr/SHA
 
           cp target/jacoco-report/cobertura.xml ./pr/jacoco-report/cobertura.xml
         if: github.event_name == 'pull_request' && matrix.os == 'ubuntu-latest'
